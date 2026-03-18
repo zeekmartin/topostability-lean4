@@ -1875,6 +1875,58 @@ lemma triangleGraph_quadratic_form (f : V → ℝ) :
     simp only [edgeLift_mk, G.mem_edgeSet.mpr h.1, G.mem_edgeSet.mpr h.2.1]
     ring
 
+/-- The T(G)-quadratic form of edgeLift f is bounded by 2(d-1) times the G-quadratic form.
+Each edge {v,w} participates in at most d-1 triangles (common neighbors ⊆ N(v)\{w}). -/
+lemma triangleGraph_quadratic_bound (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d) :
+    (∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
+      if (triangleGraph G).Adj e₁ e₂
+      then (edgeLift G f e₁ - edgeLift G f e₂) ^ 2
+      else (0 : ℝ)) ≤
+    2 * (d - 1 : ℝ) * ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+  -- Step 1: Rewrite LHS using triangleGraph_quadratic_form
+  rw [triangleGraph_quadratic_form]
+  -- Goal: ∑ u v w, [Adj∧Adj∧Adj] (fv-fw)² ≤ 2(d-1) · ∑ₑ (fu-fv)²
+  -- Step 2: Swap sums to group by (v,w) — the "edge" being counted
+  -- ∑ u v w, [u∈N(v)∩N(w)∧Adj v w] (fv-fw)² = ∑ v w, |N(v)∩N(w)∩{u|Adj v w}| · (fv-fw)²
+  -- = ∑ v w, [Adj v w] · |{u : Adj u v ∧ Adj u w}| · (fv-fw)²
+  -- Step 3: Bound |{u : Adj u v ∧ Adj u w}| ≤ d-1 for each edge {v,w}
+  -- Step 4: So LHS ≤ ∑ v w, [Adj v w] · (d-1) · (fv-fw)² = (d-1) · ∑ₑ 2·(fv-fw)²
+  -- (factor 2 from ordered vs unordered)
+  -- Convert ∑ u v w to ∑ v w (∑ u [Adj u v ∧ Adj u w]) · [Adj v w] · (fv-fw)²
+  -- Step 2: Key bound on common neighbor count
+  -- |{u | Adj u v ∧ Adj u w ∧ Adj v w}| ≤ d-1 (⊆ N(v)\{w} when Adj v w, empty otherwise)
+  have hcount : ∀ v w : V, (Finset.univ.filter
+      (fun u => G.Adj u v ∧ G.Adj u w ∧ G.Adj v w)).card ≤ d - 1 := by
+    intro v w
+    by_cases hvw : G.Adj v w
+    · have : Finset.univ.filter (fun u => G.Adj u v ∧ G.Adj u w ∧ G.Adj v w) =
+          Finset.univ.filter (fun u => G.Adj u v ∧ G.Adj u w) := by ext u; simp [hvw]
+      rw [this]
+      have hsub : Finset.univ.filter (fun u => G.Adj u v ∧ G.Adj u w) ⊆
+          (G.neighborFinset v).erase w := by
+        intro u hu
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hu
+        refine Finset.mem_erase.mpr ⟨?_, ?_⟩
+        · intro heq; subst heq; exact hu.2.ne rfl  -- u=w → Adj w w, impossible
+        · rw [SimpleGraph.mem_neighborFinset]; exact hu.1.symm
+      have hmem_w : w ∈ G.neighborFinset v := by
+        rw [SimpleGraph.mem_neighborFinset]; exact hvw
+      linarith [Finset.card_le_card hsub,
+        show ((G.neighborFinset v).erase w).card = d - 1 from by
+          rw [Finset.card_erase_of_mem hmem_w]
+          show (G.neighborFinset v).card - 1 = d - 1
+          rw [show (G.neighborFinset v).card = d from hreg.degree_eq v]]
+    · convert Nat.zero_le _
+      rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+      exact fun u _ h => hvw h.2.2
+  -- Steps 3-4: Factor u-sum, apply bound, convert directed→undirected
+  -- ∑ u v w [Adj∧Adj∧Adj] (fv-fw)² = ∑ v w, |filter(u)| · (fv-fw)²
+  -- ≤ ∑ v w, (d-1) · [Adj v w] · (fv-fw)²  (by hcount + filter=0 when ¬Adj)
+  -- = (d-1) · ∑ v w [Adj v w] (fv-fw)² = (d-1) · 2·∑ₑ (fv-fw)² = 2(d-1)·∑ₑ (fv-fw)²
+  -- The directed↔undirected conversion uses the dart machinery from edgeLift_sum_regular.
+  sorry
+
 end QuadraticForm
 
 /-- **Paper 13**: For d-regular graphs, the algebraic connectivity of the triangle graph
