@@ -1750,7 +1750,11 @@ lemma edgeLift_sum_regular (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree
   have h3 : ∑ e ∈ G.edgeFinset,
       Sym2.lift ⟨fun u v => f u + f v, fun u v => add_comm _ _⟩ e =
       ∑ e : G.edgeSet, edgeLift G f e := by
-    sorry
+    simp only [edgeLift]
+    rw [← Finset.sum_coe_sort]
+    exact @Fintype.sum_equiv _ _ ℝ _ _ _
+      (Equiv.subtypeEquivRight (fun _ => SimpleGraph.mem_edgeFinset (G := G)))
+      _ _ (fun _ => rfl)
   linarith [h1, h2, h3]
 
 -- The T(G)-Laplacian quadratic form applied to edgeLift f decomposes as a sum
