@@ -1556,11 +1556,16 @@ lemma lambda2_upper_bound_regular
     show ev j₀ * ((d : ℝ) - ev j₀) ^ 2 = _; rw [hj₀]; ring
   rw [hDval, zero_add] at hD
   -- hD : ∑_{erase} ev*(d-ev)² = ∑ ev*(d-ev)²
-  -- Combine: connect ∑ i : V notation with ∑ ∈ Finset.univ from add_sum_erase
-  have hrfl1 : ∑ i : V, ((d : ℝ) - ev i) ^ 2 =
-      ∑ x ∈ Finset.univ, ((fun i : V => ((d : ℝ) - ev i) ^ 2) x) := rfl
-  have hrfl2 : ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 =
-      ∑ x ∈ Finset.univ, ((fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) x) := rfl
-  linarith [hgoal_eq]
+  -- Connect and combine: ac * d(n-d) = ac * ∑_{erase} ≤ ∑_{erase} ev* = ∑ ev*
+  rw [hgoal_eq]
+  -- Goal: ac * (∑(d-ev)² - d²) ≤ ∑ ev*(d-ev)²
+  have hB' : ∑ i : V, ((d : ℝ) - ev i) ^ 2 - (d : ℝ) ^ 2 =
+      (Finset.univ.erase j₀).sum (fun i : V => ((d : ℝ) - ev i) ^ 2) := by
+    linarith [hB.symm]
+  rw [hB']
+  -- Goal: ac * ∑_{erase}(d-ev)² ≤ ∑ ev*(d-ev)²
+  have hD' : ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 =
+      (Finset.univ.erase j₀).sum (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) := hD.symm
+  linarith
 
 end Topostability
