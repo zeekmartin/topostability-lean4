@@ -1757,6 +1757,35 @@ lemma edgeLift_sum_regular (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree
       _ _ (fun _ => rfl)
   linarith [h1, h2, h3]
 
+/-- For d-regular G with ∑ f = 0, the edgeLift sum vanishes. -/
+lemma edgeLift_sum_zero (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d)
+    (hfsum : ∑ v, f v = 0) :
+    ∑ e : G.edgeSet, edgeLift G f e = 0 := by
+  rw [edgeLift_sum_regular G f d hreg, hfsum, mul_zero]
+
+/-- Norm squared of edgeLift for d-regular graphs:
+∑ₑ (f(u)+f(v))² = d · ∑ᵥ f(v)² + 2 · ∑ₑ f(u)·f(v).
+Expands (f u + f v)² = f u² + f v² + 2·f u·f v, then uses double-counting
+for the squared terms (each vertex in d edges) and keeps cross terms as edge sum. -/
+lemma edgeLift_norm_sq (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d) :
+    ∑ e : G.edgeSet, (edgeLift G f e) ^ 2 =
+    (d : ℝ) * ∑ v, (f v) ^ 2 + 2 * ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => f u * f v, fun u v => by ring⟩ e.val := by
+  -- (fu+fv)² = fu² + fv² + 2·fu·fv
+  -- ∑ₑ (fu+fv)² = ∑ₑ (fu² + fv²) + 2·∑ₑ fu·fv
+  -- ∑ₑ (fu² + fv²) = d·∑ᵥ fv² (same double-counting as edgeLift_sum_regular)
+  have hsq : ∀ e : G.edgeSet, (edgeLift G f e) ^ 2 =
+      edgeLift G (fun v => (f v) ^ 2) e +
+      2 * Sym2.lift ⟨fun u v => f u * f v, fun u v => by ring⟩ e.val := by
+    intro ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ u v =>
+      simp only [edgeLift_mk, Sym2.lift_mk]
+      ring
+  simp_rw [hsq, Finset.sum_add_distrib, ← Finset.mul_sum]
+  congr 1
+  exact edgeLift_sum_regular G (fun v => (f v) ^ 2) d hreg
+
 -- The T(G)-Laplacian quadratic form applied to edgeLift f decomposes as a sum
 -- over directed triangles. Each T(G)-adjacent ordered pair (e₁,e₂) corresponds
 -- bijectively to an ordered triple (u,v,w) with Adj u v, Adj u w, Adj v w,
