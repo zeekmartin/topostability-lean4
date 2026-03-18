@@ -1758,20 +1758,93 @@ lemma edgeLift_sum_regular (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree
   linarith [h1, h2, h3]
 
 -- The T(G)-Laplacian quadratic form applied to edgeLift f decomposes as a sum
--- over triangles. Each triangle {u,v,w} contributes 6 ordered pairs of adjacent edges,
--- yielding 2 · [(f(u)-f(v))² + (f(u)-f(w))² + (f(v)-f(w))²].
+-- over directed triangles. Each T(G)-adjacent ordered pair (e₁,e₂) corresponds
+-- bijectively to an ordered triple (u,v,w) with Adj u v, Adj u w, Adj v w,
+-- where e₁ = s(u,v), e₂ = s(u,w), and (edgeLift f e₁ - edgeLift f e₂)² = (f v - f w)².
 section QuadraticForm
 attribute [local instance] Classical.propDecidable
+
 lemma triangleGraph_quadratic_form (f : V → ℝ) :
     (∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
       if (triangleGraph G).Adj e₁ e₂
       then (edgeLift G f e₁ - edgeLift G f e₂) ^ 2
       else (0 : ℝ)) =
-    2 * ∑ u : V, ∑ v : V, ∑ w : V,
+    ∑ u : V, ∑ v : V, ∑ w : V,
       if G.Adj u v ∧ G.Adj u w ∧ G.Adj v w
       then (f v - f w) ^ 2
       else (0 : ℝ) := by
-  sorry
+  -- Define flat filtered finsets for both sides
+  set adjPairs := (Finset.univ : Finset (G.edgeSet × G.edgeSet)).filter
+    (fun p => (triangleGraph G).Adj p.1 p.2) with adjPairs_def
+  set dirTri := (Finset.univ : Finset (V × V × V)).filter
+    (fun t => G.Adj t.1 t.2.1 ∧ G.Adj t.1 t.2.2 ∧ G.Adj t.2.1 t.2.2) with dirTri_def
+  -- Rewrite LHS as sum over adjPairs
+  have hLHS : (∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
+      if (triangleGraph G).Adj e₁ e₂
+      then (edgeLift G f e₁ - edgeLift G f e₂) ^ 2 else (0 : ℝ)) =
+      adjPairs.sum (fun p => (edgeLift G f p.1 - edgeLift G f p.2) ^ 2) := by
+    simp only [adjPairs_def]
+    rw [← Finset.univ_product_univ, Finset.sum_filter, ← Finset.sum_product']
+  -- Rewrite RHS as sum over dirTri
+  have hRHS : (∑ u : V, ∑ v : V, ∑ w : V,
+      if G.Adj u v ∧ G.Adj u w ∧ G.Adj v w
+      then (f v - f w) ^ 2 else (0 : ℝ)) =
+      dirTri.sum (fun t => (f t.2.1 - f t.2.2) ^ 2) := by
+    simp only [dirTri_def]
+    -- First flatten ∑ v ∑ w to ∑ (v,w), then ∑ u ∑ (v,w) to ∑ (u,(v,w))
+    simp_rw [show ∀ u : V, (∑ v : V, ∑ w : V,
+        if G.Adj u v ∧ G.Adj u w ∧ G.Adj v w then (f v - f w) ^ 2 else (0 : ℝ)) =
+      ∑ vw : V × V, if G.Adj u vw.1 ∧ G.Adj u vw.2 ∧ G.Adj vw.1 vw.2
+        then (f vw.1 - f vw.2) ^ 2 else 0 from fun u =>
+      (Fintype.sum_prod_type' (fun v w =>
+        if G.Adj u v ∧ G.Adj u w ∧ G.Adj v w then (f v - f w) ^ 2 else 0)).symm]
+    rw [(Fintype.sum_prod_type' (fun u (vw : V × V) =>
+        if G.Adj u vw.1 ∧ G.Adj u vw.2 ∧ G.Adj vw.1 vw.2
+        then (f vw.1 - f vw.2) ^ 2 else (0 : ℝ))).symm,
+      ← Finset.sum_filter]
+  rw [hLHS, hRHS]
+  -- Apply sum_bij: dirTri → adjPairs
+  symm
+  apply Finset.sum_bij
+    (fun (t : V × V × V) (ht : t ∈ dirTri) =>
+      have h := (Finset.mem_filter.mp ht).2
+      ((⟨s(t.1, t.2.1), G.mem_edgeSet.mpr h.1⟩,
+        ⟨s(t.1, t.2.2), G.mem_edgeSet.mpr h.2.1⟩) : G.edgeSet × G.edgeSet))
+  · -- hi: image lands in adjPairs
+    intro ⟨u, v, w⟩ ht
+    simp only [adjPairs_def, Finset.mem_filter, Finset.mem_univ, true_and]
+    have h := (Finset.mem_filter.mp ht).2
+    exact ⟨u, v, w, rfl, rfl, h.2.2⟩
+  · -- i_inj: injective (Sym2.eq_iff case analysis)
+    intro ⟨u₁, v₁, w₁⟩ ht₁ ⟨u₂, v₂, w₂⟩ ht₂ heq
+    have h₁ := (Finset.mem_filter.mp ht₁).2
+    simp only [Prod.mk.injEq, Subtype.mk.injEq] at heq
+    obtain ⟨he1, he2⟩ := heq
+    rw [Sym2.eq_iff] at he1 he2
+    -- 4 cases from Sym2.eq_iff on each equation
+    rcases he1 with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · -- u₁=u₂, v₁=v₂
+      rcases he2 with ⟨_, rfl⟩ | ⟨rfl, rfl⟩
+      · rfl
+      · -- u₁=w₂, w₁=u₁ → w₁=u₁, contradicts Adj u₁ w₁
+        exfalso; exact h₁.2.1.ne rfl
+    · rcases he2 with ⟨rfl, _⟩ | ⟨rfl, rfl⟩
+      · exact absurd rfl h₁.1.ne
+      · exact absurd rfl h₁.2.2.ne
+  · -- i_surj: surjective (extract the shared vertex from T(G)-adjacency)
+    intro ⟨e₁, e₂⟩ hp
+    have hp' := (Finset.mem_filter.mp hp).2
+    obtain ⟨u, v, w, h1, h2, hvw⟩ := hp'
+    have huv : G.Adj u v := G.mem_edgeSet.mp (h1 ▸ e₁.2)
+    have huw : G.Adj u w := G.mem_edgeSet.mp (h2 ▸ e₂.2)
+    refine ⟨⟨u, v, w⟩,
+      Finset.mem_filter.mpr ⟨Finset.mem_univ _, huv, huw, hvw⟩,
+      Prod.ext (Subtype.ext h1.symm) (Subtype.ext h2.symm)⟩
+  · -- h: value equality (edgeLift_mk + ring)
+    intro ⟨u, v, w⟩ ht
+    have h := (Finset.mem_filter.mp ht).2
+    simp only [edgeLift_mk, G.mem_edgeSet.mpr h.1, G.mem_edgeSet.mpr h.2.1]
+    ring
 
 end QuadraticForm
 
