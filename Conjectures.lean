@@ -1568,4 +1568,14 @@ lemma lambda2_upper_bound_regular
       (Finset.univ.erase j₀).sum (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) := hD.symm
   linarith
 
+/-- **Paper 13**: For d-regular graphs, the algebraic connectivity of the triangle graph
+T(G) is at most the algebraic connectivity of G.
+  λ₂(T(G)) ≤ λ₂(G) -/
+theorem lambda2_triangle_graph_le
+    (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
+    (d : ℕ) (hreg : G.IsRegularOfDegree d)
+    (hV' : Fintype.card G.edgeSet ≥ 2) :
+    algebraicConnectivity (triangleGraph G) hV' ≤ algebraicConnectivity G hV := by
+  sorry
+
 end Topostability
