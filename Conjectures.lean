@@ -2038,6 +2038,7 @@ triangle enumeration and adjacency structure not yet available in Mathlib. -/
 theorem lambda2_triangle_graph_le
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (d : ℕ) (hreg : G.IsRegularOfDegree d)
+    (hd : 2 ≤ d)
     (hV' : Fintype.card G.edgeSet ≥ 2)
     (hTconn : (triangleGraph G).Connected) :
     algebraicConnectivity (triangleGraph G) hV' ≤ algebraicConnectivity G hV := by
@@ -2091,13 +2092,105 @@ theorem lambda2_triangle_graph_le
     exact ⟨v, Finset.mem_univ _, by positivity⟩
   -- Step 6: ac(G) > 0
   have hac_pos := algebraicConnectivity_pos G hconn hV
-  -- Step 7: The full Rayleigh quotient argument
+  -- Key spectral bound: ac ≤ d for d-regular connected graphs
+  -- Proof: use test vector x = 1_v - 1_w for any edge {v,w}. Then ∑x = 0,
+  -- xᵀLx = degree(v) + degree(w) - 2·A_{vw} = 2d-2, ‖x‖² = 2.
+  -- Rayleigh: ac ≤ (2d-2)/2 = d-1 < d. (Actually ac ≤ n·d/(n-1) in general.)
+  -- ac ≤ d+1 for d-regular connected graphs (Rayleigh with x = 1_u - 1_v)
+  have hac_le_dp1_early : algebraicConnectivity G hV ≤ (d : ℝ) + 1 := by
+    -- Get an edge from d ≥ 2 + regularity
+    set u₀ := hconn.nonempty.some
+    have ⟨w₀, hw₀⟩ := Finset.card_pos.mp (show 0 < (G.neighborFinset u₀).card from by
+      have := hreg.degree_eq u₀; simp only [SimpleGraph.degree] at this; omega)
+    have huv : G.Adj u₀ w₀ := by rwa [SimpleGraph.mem_neighborFinset] at hw₀
+    -- Test vector: x = 1_u - 1_v (as difference of indicators)
+    set u := u₀; set v := w₀
+    set x : V → ℝ := fun w => (if w = u then 1 else 0) - (if w = v then 1 else 0)
+    have hxne : x ≠ 0 := by
+      intro h; have := congr_fun h u; simp [x, huv.ne] at this
+    have hxsum : ∑ w, x w = 0 := by
+      simp only [x, Finset.sum_sub_distrib, Finset.sum_ite_eq', Finset.mem_univ, if_true]
+      norm_num
+    have hray := algebraicConnectivity_le_rayleigh G hconn hV x hxne hxsum
+    -- ‖x‖² = 1² + (-1)² = 2 (u and v contribute, rest 0)
+    have hxx : ∑ w, (x w) ^ 2 = 2 := by
+      -- Extract u and v from the sum
+      have hvu : v ≠ u := huv.ne.symm
+      rw [show ∑ w, (x w) ^ 2 = (x u) ^ 2 + (x v) ^ 2 +
+          ∑ w ∈ (Finset.univ.erase u).erase v, (x w) ^ 2 from by
+        rw [← Finset.add_sum_erase _ _ (Finset.mem_univ u),
+            ← Finset.add_sum_erase _ _ (Finset.mem_erase.mpr ⟨hvu, Finset.mem_univ v⟩)]
+        ring]
+      simp only [x, if_true, if_false, huv.ne, hvu]
+      norm_num
+      apply Finset.sum_eq_zero; intro w hw
+      simp only [Finset.mem_erase] at hw
+      simp [hw.1, hw.2.1]
+    -- xᵀLx = 2d+2 (matrix entry computation)
+    have hxLx : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) x x = 2 * (d : ℝ) + 2 := by
+      -- xᵀLx = dotProduct x (L *ᵥ x). Reduce inner sum via ite_eq, then outer sum.
+      rw [Matrix.toLinearMap₂'_apply']
+      simp only [dotProduct, Matrix.mulVec, dotProduct, x]
+      -- Reduce inner sum: ∑_j L_{ij} * x_j = L_{iu} - L_{iv}
+      simp_rw [mul_sub, Finset.sum_sub_distrib, mul_ite, mul_one, mul_zero,
+        Finset.sum_ite_eq', Finset.mem_univ, if_true]
+      -- Reduce outer sum: ∑_i (1_u - 1_v) * (L_{iu} - L_{iv})
+      --   = (L_{uu} - L_{uv}) - (L_{vu} - L_{vv})
+      simp_rw [sub_mul, Finset.sum_sub_distrib, ite_mul, one_mul, zero_mul,
+        Finset.sum_ite_eq', Finset.mem_univ, if_true]
+      -- Now goal: L_{uu} - L_{uv} - (L_{vu} - L_{vv}) = 2d+2
+      -- L_{uu} = d, L_{uv} = -1 (Adj u v), L_{vu} = -1 (Adj v u), L_{vv} = d
+      simp only [SimpleGraph.lapMatrix, Matrix.sub_apply, SimpleGraph.degMatrix,
+        Matrix.diagonal_apply, SimpleGraph.adjMatrix, Matrix.of_apply]
+      simp [hreg.degree_eq, huv, huv.symm, huv.ne, huv.ne.symm]
+      ring
+    rw [hxLx, hxx] at hray; linarith
+  have hd_pos : (2 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd
+  have hac_lt_2d : (0 : ℝ) < 2 * (d : ℝ) - algebraicConnectivity G hV := by linarith
+  -- Step 7: h ≠ 0 (from ‖h‖² = (2d-ac)·‖f‖² > 0)
+  have hh_ne : h ≠ 0 := by
+    intro habs
+    have hh_zero : ∑ e : G.edgeSet, (h e) ^ 2 = 0 := by simp [show h = 0 from habs]
+    rw [hh_norm] at hh_zero
+    linarith [mul_pos hac_lt_2d hf_sq_pos]
+  -- Step 8: Rayleigh quotient bound
   -- ac(T(G)) ≤ hᵀ L_{T(G)} h / ‖h‖²
-  -- hᵀ L_{T(G)} h = (indicator sum) / 2
-  -- ≤ 2(d-1) · Energy / 2 = (d-1) · ac · ‖f‖²
-  -- ‖h‖² = (2d-ac) · ‖f‖²
-  -- So ac(T(G)) ≤ (d-1)·ac / (2d-ac) ≤ ac  (when ac ≤ d+1)
-  -- This requires connecting the Rayleigh quotient API with the indicator sums.
-  sorry
+  have hRayleigh := algebraicConnectivity_le_rayleigh (triangleGraph G) hTconn hV' h hh_ne hh_sum
+  -- Step 9: Bound the Rayleigh quotient
+  -- hᵀ L_{T(G)} h / ‖h‖² ≤ ac(G)
+  apply le_trans hRayleigh
+  -- Goal: hᵀ L_{T(G)} h / ∑ e, (h e)² ≤ ac(G)
+  -- Numerator: hᵀ L h = (∑∑ [Adj] (h-h)²) / 2 ≤ (d-1) · ac · ‖f‖²
+  have hnum : Matrix.toLinearMap₂' ℝ ((triangleGraph G).lapMatrix ℝ) h h ≤
+      ((d : ℝ) - 1) * (algebraicConnectivity G hV * ∑ v, (f v) ^ 2) := by
+    -- toLinearMap₂' = indicator_sum / 2
+    rw [SimpleGraph.lapMatrix_toLinearMap₂']
+    -- Goal: (∑∑ [Adj] (h-h)²) / 2 ≤ (d-1) · ac · ‖f‖²
+    have hbound := triangleGraph_quadratic_bound G f d hreg
+    -- hbound: ∑∑ [Adj] (h-h)² ≤ 2(d-1) · ∑_e (fu-fv)²
+    rw [← hf_edge_energy] at *
+    linarith
+  -- Denominator: ∑ h² = (2d - ac) · ‖f‖²  (from hh_norm)
+  -- Combine: numerator / denominator ≤ (d-1) · ac / (2d - ac) ≤ ac
+  -- The last step requires ac ≤ d+1 for d-regular connected graphs.
+  rw [hh_norm]
+  -- Goal: toLinearMap₂' / ((2d-ac)·‖f‖²) ≤ ac
+  -- Need: ac < 2d (for positive denominator) and ac ≤ d+1 (for the bound)
+  -- Both are spectral bounds for d-regular connected graphs.
+  -- (hac_lt_2d and hac_le_dp1_early already in scope from Step 7)
+  have hac_le_dp1 := hac_le_dp1_early
+  have hdenom_pos : (0 : ℝ) < (2 * (d : ℝ) - algebraicConnectivity G hV) * ∑ v, (f v) ^ 2 :=
+    mul_pos hac_lt_2d hf_sq_pos
+  rw [div_le_iff₀ hdenom_pos]
+  -- Goal: numerator ≤ ac · (2d-ac) · ‖f‖²
+  -- From hnum: numerator ≤ (d-1) · ac · ‖f‖²
+  -- Need: (d-1)·ac·‖f‖² ≤ ac·(2d-ac)·‖f‖²
+  -- ↔ (d-1) ≤ (2d-ac)  (since ac > 0, ‖f‖² > 0)
+  -- ↔ ac ≤ d+1  ✓ (from hac_le_dp1)
+  have key : ((d : ℝ) - 1) * (algebraicConnectivity G hV * ∑ v, (f v) ^ 2) ≤
+      algebraicConnectivity G hV * ((2 * (d : ℝ) - algebraicConnectivity G hV) * ∑ v, (f v) ^ 2) := by
+    have h1 : (d : ℝ) - 1 ≤ 2 * (d : ℝ) - algebraicConnectivity G hV := by linarith
+    nlinarith [mul_le_mul_of_nonneg_right h1 (mul_nonneg (le_of_lt hac_pos) (le_of_lt hf_sq_pos))]
+  linarith
 
 end Topostability
