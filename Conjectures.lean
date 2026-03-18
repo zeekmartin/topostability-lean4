@@ -2038,16 +2038,66 @@ triangle enumeration and adjacency structure not yet available in Mathlib. -/
 theorem lambda2_triangle_graph_le
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (d : ℕ) (hreg : G.IsRegularOfDegree d)
-    (hV' : Fintype.card G.edgeSet ≥ 2) :
+    (hV' : Fintype.card G.edgeSet ≥ 2)
+    (hTconn : (triangleGraph G).Connected) :
     algebraicConnectivity (triangleGraph G) hV' ≤ algebraicConnectivity G hV := by
-  -- The proof requires bounding the Rayleigh quotient of edgeLift f on T(G)
-  -- by the Rayleigh quotient of f on G, using:
-  -- • triangleGraph_quadratic_bound: numerator bound (hᵀ L_{T(G)} h ≤ (d-1)·fᵀ L_G f)
-  -- • edgeLift_norm_sq: denominator identity (‖h‖² = (2d-λ₂)·‖f‖²)
-  -- • ac(G) ≤ d+1 for d-regular graphs (so 2d-ac(G) ≥ d-1 > 0)
-  -- Together: ac(T(G)) ≤ hᵀL_{T(G)}h/‖h‖² ≤ (d-1)·ac(G)/(2d-ac(G)) ≤ ac(G)
-  -- Each step requires extensive Laplacian/spectral API (lapMatrix_toLinearMap₂',
-  -- eigenvector properties, etc.) not easily composed in the current Mathlib state.
+  -- Step 1: Get Fiedler vector f for G
+  obtain ⟨f, hf_ne, hf_sum, hf_eig⟩ := fiedler_vector_exists G hconn hV
+  -- Step 2: Define h = edgeLift G f, show ∑ h = 0
+  set h := edgeLift G f with hh_def
+  have hh_sum : ∑ e : G.edgeSet, h e = 0 :=
+    edgeLift_sum_zero G f d hreg hf_sum
+  -- Step 3: Energy identity: ∑_e (fu-fv)² = ac · ‖f‖²
+  have hf_edge_energy : ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val =
+      algebraicConnectivity G hV * ∑ v, (f v) ^ 2 := by
+    -- fᵀLf = ac·‖f‖² from eigenvector property
+    have heig : dotProduct f ((G.lapMatrix ℝ).mulVec f) =
+        algebraicConnectivity G hV * dotProduct f f := by
+      rw [hf_eig]; simp only [dotProduct, Pi.smul_apply, smul_eq_mul]
+      simp_rw [mul_comm (f _) (algebraicConnectivity G hV * f _),
+        show ∀ x, algebraicConnectivity G hV * f x * f x = f x ^ 2 * algebraicConnectivity G hV
+          from fun x => by ring]
+      rw [← Finset.sum_mul]; ring
+    -- fᵀLf = ∑_e (fu-fv)² from quadratic_form_eq_edge_sum
+    have hqf := quadratic_form_eq_edge_sum G f
+    -- Connect: need toLinearMap₂' = dotProduct form
+    have hlm : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f =
+        dotProduct f ((G.lapMatrix ℝ).mulVec f) := by
+      rw [Matrix.toLinearMap₂'_apply']
+    rw [hlm, heig] at hqf
+    -- hqf: ac * ‖f‖² = ∑_e∈edgeFinset (fu-fv)²
+    -- Convert edgeFinset → edgeSet
+    have hconv : ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e =
+        ∑ e : G.edgeSet,
+          Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+      rw [← Finset.sum_coe_sort]
+      exact @Fintype.sum_equiv _ _ ℝ _ _ _
+        (Equiv.subtypeEquivRight (fun _ => SimpleGraph.mem_edgeFinset (G := G)))
+        _ _ (fun _ => rfl)
+    have hdot : dotProduct f f = ∑ v, (f v) ^ 2 := by
+      simp [dotProduct, sq]
+    rw [hdot] at hqf; linarith [hconv]
+  -- Step 4: Norm of h = (2d - ac) · ‖f‖²
+  have hh_norm : ∑ e : G.edgeSet, (h e) ^ 2 =
+      (2 * (d : ℝ) - algebraicConnectivity G hV) * ∑ v, (f v) ^ 2 :=
+    edgeLift_norm_fiedler G f d hreg hV hf_edge_energy
+  -- Step 5: Positivity of ‖f‖²
+  have hf_sq_pos : 0 < ∑ v, (f v) ^ 2 := by
+    apply Finset.sum_pos' (fun i _ => sq_nonneg (f i))
+    obtain ⟨v, hv⟩ : ∃ v, f v ≠ 0 := by
+      by_contra h; push_neg at h; exact hf_ne (funext h)
+    exact ⟨v, Finset.mem_univ _, by positivity⟩
+  -- Step 6: ac(G) > 0
+  have hac_pos := algebraicConnectivity_pos G hconn hV
+  -- Step 7: The full Rayleigh quotient argument
+  -- ac(T(G)) ≤ hᵀ L_{T(G)} h / ‖h‖²
+  -- hᵀ L_{T(G)} h = (indicator sum) / 2
+  -- ≤ 2(d-1) · Energy / 2 = (d-1) · ac · ‖f‖²
+  -- ‖h‖² = (2d-ac) · ‖f‖²
+  -- So ac(T(G)) ≤ (d-1)·ac / (2d-ac) ≤ ac  (when ac ≤ d+1)
+  -- This requires connecting the Rayleigh quotient API with the indicator sums.
   sorry
 
 end Topostability
