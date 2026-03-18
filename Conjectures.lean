@@ -1977,6 +1977,44 @@ lemma triangleGraph_quadratic_bound (f : V → ℝ) (d : ℕ) (hreg : G.IsRegula
           Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
         rw [hdart_edge]; ring
 
+/-- The norm squared of edgeLift f for a Fiedler-like vector:
+‖h‖² = (2d - λ₂) · ‖f‖², using (fu+fv)² + (fu-fv)² = 2(fu²+fv²). -/
+lemma edgeLift_norm_fiedler (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d)
+    (hV : Fintype.card V ≥ 2)
+    (hf_eigen : ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val =
+      algebraicConnectivity G hV * ∑ v, (f v) ^ 2) :
+    ∑ e : G.edgeSet, (edgeLift G f e) ^ 2 =
+    (2 * (d : ℝ) - algebraicConnectivity G hV) * ∑ v, (f v) ^ 2 := by
+  -- edgeLift_norm_sq: ∑ (fu+fv)² = d·∑fv² + 2·∑_e fu·fv
+  rw [edgeLift_norm_sq G f d hreg]
+  -- Need: d·∑fv² + 2·∑_e fu·fv = (2d - ac)·∑fv²
+  -- i.e., 2·∑_e fu·fv = (d - ac)·∑fv²
+  -- From: ∑_e (fu-fv)² = ∑_e (fu²+fv²) - 2·∑_e fu·fv = d·∑fv² - 2·∑_e fu·fv
+  -- So 2·∑_e fu·fv = d·∑fv² - ∑_e (fu-fv)² = d·∑fv² - ac·∑fv² = (d-ac)·∑fv²
+  -- Use: ∑_e (fu²+fv²) = d·∑fv² (same double-counting as edgeLift_sum_regular)
+  have hsq_sum : ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u) ^ 2 + (f v) ^ 2, fun u v => by ring⟩ e.val =
+      (d : ℝ) * ∑ v, (f v) ^ 2 := by
+    have := edgeLift_sum_regular G (fun v => (f v) ^ 2) d hreg
+    simp only [edgeLift] at this
+    convert this using 1
+  -- ∑_e (fu-fv)² = ∑_e (fu²+fv²) - 2·∑_e fu·fv
+  have hexpand : ∀ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val =
+      Sym2.lift ⟨fun u v => (f u) ^ 2 + (f v) ^ 2, fun u v => by ring⟩ e.val -
+      2 * Sym2.lift ⟨fun u v => f u * f v, fun u v => by ring⟩ e.val := by
+    intro ⟨e, he⟩
+    induction e using Sym2.ind with | _ u v => simp [Sym2.lift_mk]; ring
+  have henergy : ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val =
+      (d : ℝ) * ∑ v, (f v) ^ 2 -
+      2 * ∑ e : G.edgeSet,
+        Sym2.lift ⟨fun u v => f u * f v, fun u v => by ring⟩ e.val := by
+    simp_rw [hexpand, Finset.sum_sub_distrib, ← Finset.mul_sum, hsq_sum]
+  -- Combine: 2·cross = d·∑fv² - energy = d·∑fv² - ac·∑fv²
+  linarith [hf_eigen, henergy]
+
 end QuadraticForm
 
 /-- **Paper 13**: For d-regular graphs, the algebraic connectivity of the triangle graph
@@ -2002,6 +2040,14 @@ theorem lambda2_triangle_graph_le
     (d : ℕ) (hreg : G.IsRegularOfDegree d)
     (hV' : Fintype.card G.edgeSet ≥ 2) :
     algebraicConnectivity (triangleGraph G) hV' ≤ algebraicConnectivity G hV := by
+  -- The proof requires bounding the Rayleigh quotient of edgeLift f on T(G)
+  -- by the Rayleigh quotient of f on G, using:
+  -- • triangleGraph_quadratic_bound: numerator bound (hᵀ L_{T(G)} h ≤ (d-1)·fᵀ L_G f)
+  -- • edgeLift_norm_sq: denominator identity (‖h‖² = (2d-λ₂)·‖f‖²)
+  -- • ac(G) ≤ d+1 for d-regular graphs (so 2d-ac(G) ≥ d-1 > 0)
+  -- Together: ac(T(G)) ≤ hᵀL_{T(G)}h/‖h‖² ≤ (d-1)·ac(G)/(2d-ac(G)) ≤ ac(G)
+  -- Each step requires extensive Laplacian/spectral API (lapMatrix_toLinearMap₂',
+  -- eigenvector properties, etc.) not easily composed in the current Mathlib state.
   sorry
 
 end Topostability
