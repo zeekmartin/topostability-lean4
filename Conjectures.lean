@@ -1920,12 +1920,62 @@ lemma triangleGraph_quadratic_bound (f : V → ℝ) (d : ℕ) (hreg : G.IsRegula
     · convert Nat.zero_le _
       rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
       exact fun u _ h => hvw h.2.2
-  -- Steps 3-4: Factor u-sum, apply bound, convert directed→undirected
-  -- ∑ u v w [Adj∧Adj∧Adj] (fv-fw)² = ∑ v w, |filter(u)| · (fv-fw)²
-  -- ≤ ∑ v w, (d-1) · [Adj v w] · (fv-fw)²  (by hcount + filter=0 when ¬Adj)
-  -- = (d-1) · ∑ v w [Adj v w] (fv-fw)² = (d-1) · 2·∑ₑ (fv-fw)² = 2(d-1)·∑ₑ (fv-fw)²
-  -- The directed↔undirected conversion uses the dart machinery from edgeLift_sum_regular.
-  sorry
+  -- Commute sums: ∑ u v w → ∑ v w u, then factor (fv-fw)² out of u-sum
+  rw [Finset.sum_comm (f := fun u v => _)]
+  conv_lhs => arg 2; ext v; rw [Finset.sum_comm (f := fun u w => _)]
+  -- Now: ∑ v w u, [Adj u v ∧ Adj u w ∧ Adj v w] (fv-fw)²
+  -- Factor: ∑ u [P(u)] c = |filter| · c (c = (fv-fw)² doesn't depend on u)
+  conv_lhs => arg 2; ext v; arg 2; ext w
+              rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
+  -- Per-term bound: |filter| · c ≤ [Adj v w] · (d-1) · c
+  -- When Adj v w: |filter| ≤ d-1 by hcount
+  -- When ¬Adj v w: |filter| = 0 (Adj v w is part of the conjunction)
+  -- Dart→edge: ∑ v w [Adj v w] g(v,w) = 2 · ∑ₑ g(e)
+  have hdart_edge : ∑ v : V, ∑ w : V,
+      (if G.Adj v w then (f v - f w) ^ 2 else (0 : ℝ)) =
+      2 * ∑ e : G.edgeSet,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+    have hqf := quadratic_form_eq_edge_sum G f
+    rw [SimpleGraph.lapMatrix_toLinearMap₂'] at hqf
+    -- Convert edgeFinset sum to edgeSet sum (same as h3 in edgeLift_sum_regular)
+    have h3 : ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e =
+        ∑ e : G.edgeSet,
+          Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+      rw [← Finset.sum_coe_sort]
+      exact @Fintype.sum_equiv _ _ ℝ _ _ _
+        (Equiv.subtypeEquivRight (fun _ => SimpleGraph.mem_edgeFinset (G := G)))
+        _ _ (fun _ => rfl)
+    linarith
+  calc ∑ v : V, ∑ w : V,
+        ↑(Finset.univ.filter (fun u => G.Adj u v ∧ G.Adj u w ∧ G.Adj v w)).card *
+          (f v - f w) ^ 2
+      ≤ ∑ v : V, ∑ w : V,
+          if G.Adj v w then ((d : ℝ) - 1) * (f v - f w) ^ 2 else 0 := by
+        apply Finset.sum_le_sum; intro v _
+        apply Finset.sum_le_sum; intro w _
+        by_cases hvw : G.Adj v w
+        · rw [if_pos hvw]
+          apply mul_le_mul_of_nonneg_right _ (sq_nonneg _)
+          have hd_pos : 1 ≤ d := by
+            rw [← hreg.degree_eq v]
+            exact Finset.card_pos.mpr ⟨w, by rw [SimpleGraph.mem_neighborFinset]; exact hvw⟩
+          calc (↑(Finset.univ.filter _).card : ℝ) ≤ ↑(d - 1) := by
+                exact_mod_cast hcount v w
+            _ = (d : ℝ) - 1 := by push_cast [Nat.cast_sub hd_pos]; ring
+        · -- ¬Adj v w: filter empty, LHS = 0
+          have : (Finset.univ.filter (fun u => G.Adj u v ∧ G.Adj u w ∧ G.Adj v w)).card = 0 := by
+            rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
+            exact fun u _ h => hvw h.2.2
+          simp [this, hvw]
+    _ = ((d : ℝ) - 1) * ∑ v : V, ∑ w : V,
+          if G.Adj v w then (f v - f w) ^ 2 else (0 : ℝ) := by
+        rw [Finset.mul_sum]; congr 1; ext v
+        rw [Finset.mul_sum]; congr 1; ext w
+        split_ifs <;> ring
+    _ = 2 * ((d : ℝ) - 1) * ∑ e : G.edgeSet,
+          Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+        rw [hdart_edge]; ring
 
 end QuadraticForm
 
