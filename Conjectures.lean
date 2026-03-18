@@ -1649,7 +1649,22 @@ lemma lambda2_upper_bound_regular
 
 /-- **Paper 13**: For d-regular graphs, the algebraic connectivity of the triangle graph
 T(G) is at most the algebraic connectivity of G.
-  λ₂(T(G)) ≤ λ₂(G) -/
+  λ₂(T(G)) ≤ λ₂(G)
+
+Proof sketch (Rayleigh quotient bridge):
+1. Take the Fiedler vector f : V → ℝ of G (eigenvector for λ₂, with ∑ f = 0).
+2. Lift to h := edgeLift G f : G.edgeSet → ℝ, i.e. h({u,v}) = f(u) + f(v).
+3. For d-regular G: ∑ₑ h(e) = ∑_{e={u,v}} (f(u)+f(v)) = d · ∑ᵥ f(v) = 0.
+4. Rayleigh quotient: λ₂(T(G)) ≤ hᵀ L_{T(G)} h / ‖h‖².
+5. Key quadratic form identity:
+   hᵀ L_{T(G)} h = ∑_{triangles {u,v,w}} [(f(v)-f(w))² + (f(u)-f(w))² + (f(u)-f(v))²]
+   ≤ tri_max · ∑_{e={u,v}∈E} (f(u)-f(v))² = tri_max · fᵀ L_G f
+6. Norm bound: ‖h‖² ≥ C(d) · ‖f‖² for suitable C(d).
+7. Combine: λ₂(T(G)) ≤ (tri_max/C(d)) · fᵀ L_G f / ‖f‖² = (tri_max/C(d)) · λ₂(G).
+   For d-regular graphs, tri_max/C(d) ≤ 1 gives the result.
+
+This requires Laplacian quadratic form decomposition on T(G), which needs
+triangle enumeration and adjacency structure not yet available in Mathlib. -/
 theorem lambda2_triangle_graph_le
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (d : ℕ) (hreg : G.IsRegularOfDegree d)

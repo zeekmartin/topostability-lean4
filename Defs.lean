@@ -51,4 +51,9 @@ noncomputable instance triangleGraph.instDecidableRel :
     DecidableRel (triangleGraph G).Adj :=
   fun _ _ => Classical.dec _
 
+/-- Lift a vertex function to an edge function via h({u,v}) = f(u) + f(v).
+Well-defined by commutativity of addition. -/
+def edgeLift {R : Type*} [AddCommMonoid R] (f : V → R) : G.edgeSet → R :=
+  fun ⟨e, _⟩ => Sym2.lift ⟨fun u v => f u + f v, fun u v => add_comm (f u) (f v)⟩ e
+
 end Topostability
