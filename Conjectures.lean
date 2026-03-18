@@ -1675,7 +1675,83 @@ lemma edgeLift_triangleAdj_sq (f : V → ℝ) (e₁ e₂ : G.edgeSet)
 Each vertex appears in exactly d edges, so ∑ₑ (f(u)+f(v)) = d · ∑ᵥ f(v). -/
 lemma edgeLift_sum_regular (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d) :
     ∑ e : G.edgeSet, edgeLift G f e = (d : ℝ) * ∑ v : V, f v := by
-  sorry
+  classical
+  -- Strategy: ∑_e (fu+fv) = (∑_i ∑_j [Adj i j] (fi+fj)) / 2 = (2d·∑f) / 2 = d·∑f
+  -- Step 1: double sum = 2d · ∑f
+  have hdouble : ∑ i : V, ∑ j : V,
+      (if G.Adj i j then f i + f j else (0 : ℝ)) = 2 * (d : ℝ) * ∑ v, f v := by
+    simp_rw [show ∀ (i j : V), (if G.Adj i j then f i + f j else (0 : ℝ)) =
+      (if G.Adj i j then f i else 0) + (if G.Adj i j then f j else 0) from
+      fun i j => by split_ifs <;> simp]
+    simp_rw [Finset.sum_add_distrib]
+    -- Part A: ∑_i ∑_j [Adj i j] fi = d · ∑f
+    have hA : ∑ i : V, ∑ j : V, (if G.Adj i j then f i else (0 : ℝ)) =
+        (d : ℝ) * ∑ v, f v := by
+      simp_rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
+      simp_rw [show ∀ i : V, ((Finset.univ.filter (G.Adj i)).card : ℝ) = (d : ℝ) from
+        fun i => by
+          rw [show Finset.univ.filter (G.Adj i) = G.neighborFinset i from
+            (SimpleGraph.neighborFinset_eq_filter G).symm]
+          exact_mod_cast hreg.degree_eq i]
+      rw [← Finset.mul_sum]
+    -- Part B: ∑_i ∑_j [Adj i j] fj = d · ∑f (swap sums, then adj_comm gives hA)
+    have hB : ∑ i : V, ∑ j : V, (if G.Adj i j then f j else (0 : ℝ)) =
+        (d : ℝ) * ∑ v, f v := by
+      have hswap : ∀ (a b : V), (if G.Adj b a then f a else (0 : ℝ)) =
+          (if G.Adj a b then f a else 0) := by
+        intro a b; congr 1; exact propext (G.adj_comm b a)
+      rw [Finset.sum_comm]; simp_rw [hswap]; exact hA
+    linarith
+  -- Step 2: edge sum = double sum / 2 (via dart decomposition)
+  suffices hedge : (∑ e : G.edgeSet, edgeLift G f e) * 2 =
+      ∑ i : V, ∑ j : V, if G.Adj i j then f i + f j else (0 : ℝ) by
+    linarith
+  -- Convert to dart sum, then to double vertex sum
+  -- h1: double vertex sum = dart sum (reusing pattern from quadratic_form_eq_edge_sum)
+  have h1 : ∑ i : V, ∑ j : V,
+      (if G.Adj i j then f i + f j else (0 : ℝ)) =
+      ∑ a : G.Dart, (f a.toProd.1 + f a.toProd.2) := by
+    symm; simp_rw [← Finset.sum_filter]
+    rw [← Finset.sum_fiberwise_of_maps_to (g := fun (a : G.Dart) => a.toProd.1)
+        (f := fun a => f a.toProd.1 + f a.toProd.2)
+        (fun _ _ => Finset.mem_univ _)]
+    congr 1 with v
+    rw [G.dart_fst_fiber v, Finset.sum_image
+      (fun _ _ _ _ h => G.dartOfNeighborSet_injective v h)]
+    simp only [SimpleGraph.dartOfNeighborSet,
+      SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter,
+      SimpleGraph.mem_neighborSet]
+    conv_rhs => rw [← Finset.sum_filter]
+    exact (Finset.sum_subtype (Finset.univ.filter (G.Adj v))
+      (fun w => by simp [SimpleGraph.mem_neighborSet])
+      (fun w => f v + f w)).symm
+  -- h2: dart sum = 2 * edge finset sum
+  have h2 : ∑ a : G.Dart, (f a.toProd.1 + f a.toProd.2) =
+      2 * ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => f u + f v, fun u v => add_comm _ _⟩ e := by
+    rw [Finset.mul_sum, ← Finset.sum_fiberwise_of_maps_to
+      (g := fun (a : G.Dart) => a.edge) (s := Finset.univ)
+      (t := G.edgeFinset) (fun a _ => SimpleGraph.mem_edgeFinset.mpr a.edge_mem)]
+    apply Finset.sum_congr rfl; intro e he
+    induction e using Sym2.ind with
+    | _ u v =>
+      have hadj : G.Adj u v := SimpleGraph.mem_edgeFinset.mp he
+      set d₀ : G.Dart := ⟨(u, v), hadj⟩
+      rw [show Finset.univ.filter (fun a : G.Dart => a.edge = s(u, v)) =
+        {d₀, d₀.symm} from by
+          ext d'; simp only [Finset.mem_filter, Finset.mem_univ, true_and,
+            Finset.mem_insert, Finset.mem_singleton]
+          exact SimpleGraph.dart_edge_eq_iff d' d₀]
+      rw [Finset.sum_insert (show d₀ ∉ ({d₀.symm} : Finset _) from by
+        simp only [Finset.mem_singleton]; exact d₀.symm_ne.symm),
+        Finset.sum_singleton]
+      simp only [Sym2.lift_mk, d₀, SimpleGraph.Dart.symm, Prod.swap]; ring
+  -- h3: edge finset sum = edgeSet subtype sum
+  have h3 : ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => f u + f v, fun u v => add_comm _ _⟩ e =
+      ∑ e : G.edgeSet, edgeLift G f e := by
+    sorry
+  linarith [h1, h2, h3]
 
 -- The T(G)-Laplacian quadratic form applied to edgeLift f decomposes as a sum
 -- over triangles. Each triangle {u,v,w} contributes 6 ordered pairs of adjacent edges,
