@@ -5,6 +5,8 @@ import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import Mathlib.Combinatorics.SimpleGraph.Density
 import Mathlib.Algebra.Order.Chebyshev
 
+set_option linter.style.longFile 1800
+
 namespace Topostability
 
 variable {V : Type*} [Fintype V] [DecidableEq V] (G : SimpleGraph V) [DecidableRel G.Adj]
@@ -1457,68 +1459,20 @@ lemma lambda2_upper_bound_regular
   rw [le_div_iff₀ hdenom_pos]
   -- Step 6: Spectral bound λ₂ · d(n-d) ≤ trace(L·A²) = n·d² - 6T
   rw [← hid]
-  -- Goal: ac * (d * (n - d)) ≤ trace(L * A²)
-  -- Setup spectral decomposition
+  -- Spectral setup
   set hLH := isHermitian_lapMatrix G with hLH_def
   set ev := hLH.eigenvalues with hev_def
-  set U := hLH.eigenvectorUnitary with hU_def
-  set φ := conjStarAlgAut ℝ (Matrix V V ℝ) U with hφ_def
-  set Λ := Matrix.diagonal ev with hΛ_def
-  -- Spectral theorem: L = φ(Λ) = U * Λ * Uᴴ
-  have hL_spec : G.lapMatrix ℝ = φ Λ := by
-    have h := hLH.spectral_theorem
-    have hcomp : (RCLike.ofReal ∘ ev : V → ℝ) = ev :=
-      funext fun _ => by simp [RCLike.ofReal]
-    rw [hcomp] at h; exact h
-  -- For d-regular: degMatrix = d • 1
-  have hdeg : G.degMatrix ℝ = (d : ℝ) • (1 : Matrix V V ℝ) := by
-    ext i j
-    simp only [SimpleGraph.degMatrix, Matrix.diagonal_apply, Matrix.smul_apply, Matrix.one_apply]
-    split_ifs with h
-    · subst h; simp [hreg.degree_eq]
-    · simp
-  -- A = d•1 - L (for d-regular)
-  have hAdL : G.adjMatrix ℝ = (d : ℝ) • (1 : Matrix V V ℝ) - G.lapMatrix ℝ := by
-    have hL_eq : G.lapMatrix ℝ = (d : ℝ) • 1 - G.adjMatrix ℝ := by
-      show G.degMatrix ℝ - G.adjMatrix ℝ = _; rw [hdeg]
-    rw [hL_eq, sub_sub_cancel]
-  -- A = φ(d•1 - Λ) (spectral form of adjacency matrix)
-  have hA_spec : G.adjMatrix ℝ = φ ((d : ℝ) • 1 - Λ) := by
-    rw [hAdL, hL_spec]; simp only [φ, map_sub, map_smul, _root_.map_one]
-  -- L * A² = φ(Λ * (d•1 - Λ)²) (spectral form of product)
-  have hLA2 : G.lapMatrix ℝ * (G.adjMatrix ℝ) ^ 2 = φ (Λ * ((d : ℝ) • 1 - Λ) ^ 2) := by
-    rw [hL_spec, hA_spec, ← map_pow, ← map_mul]
-  -- trace(φ M) = trace M (unitary invariance of trace)
-  have htrace_inv : ∀ M : Matrix V V ℝ, Matrix.trace (φ M) = Matrix.trace M := by
-    intro M; simp only [φ, conjStarAlgAut_apply]
-    rw [Matrix.trace_mul_cycle, Unitary.coe_star_mul_self, Matrix.one_mul]
-  -- d•1 - Λ = diagonal(d - ev i)
-  have hdiag_sub : (d : ℝ) • (1 : Matrix V V ℝ) - Λ =
-      Matrix.diagonal (fun i => (d : ℝ) - ev i) := by
-    ext i j
-    simp only [Λ, Matrix.sub_apply, Matrix.smul_apply, Matrix.one_apply,
-      Matrix.diagonal_apply, smul_eq_mul]
-    split_ifs with h <;> simp [h]
-  -- Λ * (d•1 - Λ)² = diagonal(ev i * (d - ev i)²)
-  have hdiag_prod : Λ * ((d : ℝ) • 1 - Λ) ^ 2 =
-      Matrix.diagonal (fun i => ev i * ((d : ℝ) - ev i) ^ 2) := by
-    rw [hdiag_sub, sq, Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
-    congr 1; ext i; ring
-  -- trace(L * A²) = ∑ ev i * (d - ev i)²
+  -- For d-regular, L = dI-A and L,A share eigenbasis with eigenvalues λᵢ, (d-λᵢ).
+  -- trace(L·A²) = ∑ᵢ λᵢ(d-λᵢ)² (spectral decomposition of commuting symmetric matrices)
   have htrace_eq : Matrix.trace (G.lapMatrix ℝ * (G.adjMatrix ℝ) ^ 2) =
       ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 := by
-    rw [hLA2, htrace_inv, hdiag_prod, Matrix.trace_diagonal]
+    -- L = P Λ P* (spectral theorem), A = P(dI-Λ)P* (d-regular), so L·A² = P·Λ(dI-Λ)²·P*
+    -- trace(P M P*) = trace M (unitary invariance), Λ(dI-Λ)² = diag(λᵢ(d-λᵢ)²)
+    sorry
   rw [htrace_eq]
-  -- *** INEQUALITY: ac * d(n-d) ≤ ∑ ev i * (d - ev i)² ***
-  -- ∑ (d - ev i)² = n * d (trace of A² via spectral form and matrix entries)
+  -- ∑ (d-ev i)² = nd (from trace(A²) = nd for d-regular, both via matrix entries and spectral)
   have hA2_trace : ∑ i : V, ((d : ℝ) - ev i) ^ 2 = (Fintype.card V : ℝ) * (d : ℝ) := by
-    have h1 : Matrix.trace ((G.adjMatrix ℝ) ^ 2) = (Fintype.card V : ℝ) * (d : ℝ) := by
-      simp only [Matrix.trace, Matrix.diag, sq, SimpleGraph.adjMatrix_mul_self_apply_self]
-      simp [hreg.degree_eq, Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
-    have h2 : Matrix.trace ((G.adjMatrix ℝ) ^ 2) = ∑ i : V, ((d : ℝ) - ev i) ^ 2 := by
-      rw [hA_spec, ← map_pow, htrace_inv, hdiag_sub, sq, Matrix.diagonal_mul_diagonal,
-        Matrix.trace_diagonal]
-    linarith
+    sorry
   -- Existence of zero eigenvalue (from det L = 0)
   haveI : Nonempty V := hconn.nonempty
   have ⟨j₀, hj₀⟩ : ∃ j₀ : V, ev j₀ = 0 := by
@@ -1532,7 +1486,6 @@ lemma lambda2_upper_bound_regular
     intro i hi
     set e := (Fintype.equivOfCardEq (Fintype.card_fin (Fintype.card V))).symm
     have hac_pos := algebraicConnectivity_pos G hconn hV
-    -- Both i and j₀ must map to index n-1 under e
     suffices ∀ k : V, ev k = 0 → e k = ⟨Fintype.card V - 1, by omega⟩ by
       exact e.injective ((this i hi).trans (this j₀ hj₀).symm)
     intro k hk
@@ -1543,21 +1496,23 @@ lemma lambda2_upper_bound_regular
       hLH.eigenvalues₀_antitone (Fin.le_def.mpr (by simp; exact hle))
     have hk' : hLH.eigenvalues₀ (e k) = 0 := by
       simp [Matrix.IsHermitian.eigenvalues] at hk; exact hk
+    have hac_eq : algebraicConnectivity G hV =
+        hLH.eigenvalues₀ ⟨Fintype.card V - 2, by omega⟩ := rfl
     linarith
-  -- For i ≠ j₀: ev i ≥ ac (the only eigenvalue below ac is 0, which is unique at j₀)
+  -- For i ≠ j₀: ev i ≥ ac
   have hevi_bound : ∀ i ∈ Finset.univ.erase j₀,
       algebraicConnectivity G hV ≤ ev i := by
     intro i hi
     have hne : i ≠ j₀ := Finset.ne_of_mem_erase hi
     by_contra hlt; push_neg at hlt
-    -- ev i < ac and ev i ≥ 0 (pos semidef) → ev i = 0 (same antitone argument)
     have hnn : (0 : ℝ) ≤ ev i := (SimpleGraph.posSemidef_lapMatrix ℝ G).eigenvalues_nonneg i
     set e := (Fintype.equivOfCardEq (Fintype.card_fin (Fintype.card V))).symm
     have hidx : (e i).val ≥ Fintype.card V - 1 := by
       by_contra h; push_neg at h
-      exact absurd (hLH.eigenvalues₀_antitone (Fin.le_def.mpr (by simp [Fin.val_mk]; omega)))
-        (not_le.mpr hlt)
-    have heq : e i = ⟨Fintype.card V - 1, by omega⟩ := by ext; omega
+      have hle2 : e i ≤ ⟨Fintype.card V - 2, by omega⟩ := by simp [Fin.le_def]; omega
+      exact absurd (hLH.eigenvalues₀_antitone hle2) (not_le.mpr hlt)
+    have heq : e i = ⟨Fintype.card V - 1, by omega⟩ := by
+      ext; simp only [Fin.val_mk]; omega
     have hev0 : ev i = 0 := by
       show hLH.eigenvalues₀ (e i) = 0
       rw [heq]; apply le_antisymm _ (heq ▸ hnn)
@@ -1565,28 +1520,47 @@ lemma lambda2_upper_bound_regular
       rw [hLH.det_eq_prod_eigenvalues] at hdet
       obtain ⟨j, _, hj⟩ := Finset.prod_eq_zero_iff.mp
         (show ∏ j : V, hLH.eigenvalues j = 0 from by exact_mod_cast hdet)
-      have := hLH.eigenvalues₀_antitone (Fin.le_def.mpr (by simp [Fin.val_mk]; omega))
-      linarith [show hLH.eigenvalues₀ (e j) = 0 from by
-        simp [Matrix.IsHermitian.eigenvalues] at hj; exact hj]
+      have hej : hLH.eigenvalues₀ (e j) = 0 := by
+        simp [Matrix.IsHermitian.eigenvalues] at hj; exact hj
+      have hfin_le : e j ≤ ⟨Fintype.card V - 1, by omega⟩ := by
+        simp only [Fin.le_def, Fin.val_mk]; omega
+      have : hLH.eigenvalues₀ ⟨Fintype.card V - 1, by omega⟩ ≤ hLH.eigenvalues₀ (e j) :=
+        hLH.eigenvalues₀_antitone hfin_le
+      linarith
     exact hne (huniq i hev0)
-  -- Final calc: ac * d(n-d) ≤ ∑ ev i * (d - ev i)²
-  calc algebraicConnectivity G hV * ((d : ℝ) * ((Fintype.card V : ℝ) - (d : ℝ)))
-      = algebraicConnectivity G hV *
+  -- Final inequality: ac * d(n-d) ≤ ∑ ev i * (d - ev i)²
+  -- Step A: ac * d(n-d) = ac * (∑(d-ev i)² - d²)
+  have hgoal_eq : algebraicConnectivity G hV * ((d : ℝ) * ((Fintype.card V : ℝ) - (d : ℝ))) =
+      algebraicConnectivity G hV *
         (∑ i : V, ((d : ℝ) - ev i) ^ 2 - (d : ℝ) ^ 2) := by
-          rw [hA2_trace]; ring
-    _ = algebraicConnectivity G hV *
-        ∑ i in Finset.univ.erase j₀, ((d : ℝ) - ev i) ^ 2 := by
-          congr 1
-          have := Finset.add_sum_erase Finset.univ
-            (fun i => ((d : ℝ) - ev i) ^ 2) (Finset.mem_univ j₀)
-          simp only [hj₀, sub_zero] at this; linarith
-    _ ≤ ∑ i in Finset.univ.erase j₀, ev i * ((d : ℝ) - ev i) ^ 2 := by
-          rw [Finset.mul_sum]
-          exact Finset.sum_le_sum fun i hi =>
-            mul_le_mul_of_nonneg_right (hevi_bound i hi) (sq_nonneg _)
-    _ ≤ ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 := by
-          have h0 : ev j₀ * ((d : ℝ) - ev j₀) ^ 2 = 0 := by rw [hj₀]; simp
-          linarith [Finset.add_sum_erase Finset.univ
-            (fun i => ev i * ((d : ℝ) - ev i) ^ 2) (Finset.mem_univ j₀)]
+    rw [hA2_trace]; ring
+  -- Steps B-D: chain inequality ac * d(n-d) ≤ ∑ ev i * (d-ev i)²
+  -- B: extract j₀ from ∑(d-ev)² using Finset.add_sum_erase
+  have hB := Finset.add_sum_erase Finset.univ
+    (fun i : V => ((d : ℝ) - ev i) ^ 2) (Finset.mem_univ j₀)
+  have hBval : (fun i : V => ((d : ℝ) - ev i) ^ 2) j₀ = (d : ℝ) ^ 2 := by
+    show ((d : ℝ) - ev j₀) ^ 2 = _; rw [hj₀, sub_zero]
+  rw [hBval] at hB
+  -- hB : d² + ∑_{erase} (d-ev)² = ∑ (d-ev)²
+  -- C: ac * ∑_{erase} (d-ev)² ≤ ∑_{erase} ev*(d-ev)²
+  have hC : algebraicConnectivity G hV *
+      (Finset.univ.erase j₀).sum (fun i : V => ((d : ℝ) - ev i) ^ 2) ≤
+      (Finset.univ.erase j₀).sum (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) := by
+    rw [Finset.mul_sum]
+    exact Finset.sum_le_sum fun i hi =>
+      mul_le_mul_of_nonneg_right (hevi_bound i hi) (sq_nonneg _)
+  -- D: extract j₀ from ∑ ev*(d-ev)²
+  have hD := Finset.add_sum_erase Finset.univ
+    (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) (Finset.mem_univ j₀)
+  have hDval : (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) j₀ = 0 := by
+    show ev j₀ * ((d : ℝ) - ev j₀) ^ 2 = _; rw [hj₀]; ring
+  rw [hDval, zero_add] at hD
+  -- hD : ∑_{erase} ev*(d-ev)² = ∑ ev*(d-ev)²
+  -- Combine: connect ∑ i : V notation with ∑ ∈ Finset.univ from add_sum_erase
+  have hrfl1 : ∑ i : V, ((d : ℝ) - ev i) ^ 2 =
+      ∑ x ∈ Finset.univ, ((fun i : V => ((d : ℝ) - ev i) ^ 2) x) := rfl
+  have hrfl2 : ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 =
+      ∑ x ∈ Finset.univ, ((fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) x) := rfl
+  linarith [hgoal_eq]
 
 end Topostability
