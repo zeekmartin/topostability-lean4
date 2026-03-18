@@ -5,7 +5,7 @@ import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import Mathlib.Combinatorics.SimpleGraph.Density
 import Mathlib.Algebra.Order.Chebyshev
 
-set_option linter.style.longFile 1800
+set_option linter.style.longFile 2000
 
 namespace Topostability
 
@@ -1646,6 +1646,54 @@ lemma lambda2_upper_bound_regular
   have hD' : ∑ i : V, ev i * ((d : ℝ) - ev i) ^ 2 =
       (Finset.univ.erase j₀).sum (fun i : V => ev i * ((d : ℝ) - ev i) ^ 2) := hD.symm
   linarith
+
+/-- Computation rule for `edgeLift`: on a concrete edge s(u,v), the lift is f(u) + f(v). -/
+@[simp]
+lemma edgeLift_mk {R : Type*} [AddCommMonoid R] (f : V → R)
+    {u v : V} (h : s(u, v) ∈ G.edgeSet) :
+    edgeLift G f ⟨s(u, v), h⟩ = f u + f v := by
+  simp [edgeLift, Sym2.lift_mk]
+
+/-- When two edges are adjacent in T(G), they share a vertex u with
+e₁ = s(u,v) and e₂ = s(u,w), so the edgeLift difference squares to a vertex difference. -/
+lemma edgeLift_triangleAdj_sq (f : V → ℝ) (e₁ e₂ : G.edgeSet)
+    (hadj : (triangleGraph G).Adj e₁ e₂) :
+    ∃ v w : V, G.Adj v w ∧
+      (edgeLift G f e₁ - edgeLift G f e₂) ^ 2 = (f v - f w) ^ 2 := by
+  obtain ⟨u, v, w, h1, h2, hvw⟩ := hadj
+  refine ⟨v, w, hvw, ?_⟩
+  -- e₁.val = s(u,v) and e₂.val = s(u,w)
+  have he1 : edgeLift G f e₁ = f u + f v := by
+    change Sym2.lift ⟨fun a b => f a + f b, _⟩ e₁.val = _
+    rw [h1, Sym2.lift_mk]
+  have he2 : edgeLift G f e₂ = f u + f w := by
+    change Sym2.lift ⟨fun a b => f a + f b, _⟩ e₂.val = _
+    rw [h2, Sym2.lift_mk]
+  rw [he1, he2]; ring
+
+/-- For d-regular graphs, the sum of edgeLift equals d times the sum of f.
+Each vertex appears in exactly d edges, so ∑ₑ (f(u)+f(v)) = d · ∑ᵥ f(v). -/
+lemma edgeLift_sum_regular (f : V → ℝ) (d : ℕ) (hreg : G.IsRegularOfDegree d) :
+    ∑ e : G.edgeSet, edgeLift G f e = (d : ℝ) * ∑ v : V, f v := by
+  sorry
+
+-- The T(G)-Laplacian quadratic form applied to edgeLift f decomposes as a sum
+-- over triangles. Each triangle {u,v,w} contributes 6 ordered pairs of adjacent edges,
+-- yielding 2 · [(f(u)-f(v))² + (f(u)-f(w))² + (f(v)-f(w))²].
+section QuadraticForm
+attribute [local instance] Classical.propDecidable
+lemma triangleGraph_quadratic_form (f : V → ℝ) :
+    (∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
+      if (triangleGraph G).Adj e₁ e₂
+      then (edgeLift G f e₁ - edgeLift G f e₂) ^ 2
+      else (0 : ℝ)) =
+    2 * ∑ u : V, ∑ v : V, ∑ w : V,
+      if G.Adj u v ∧ G.Adj u w ∧ G.Adj v w
+      then (f v - f w) ^ 2
+      else (0 : ℝ) := by
+  sorry
+
+end QuadraticForm
 
 /-- **Paper 13**: For d-regular graphs, the algebraic connectivity of the triangle graph
 T(G) is at most the algebraic connectivity of G.
