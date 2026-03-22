@@ -18,6 +18,7 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 |------|----------|
 | `Defs.lean` | Core definitions: `triCount`, `tauG`, `totalTriangles`, `fragilityIndex`, `triangleGraph`, `edgeLift` |
 | `Conjectures.lean` | All proofs: spectral identity, Cheeger inequality, lower/upper bounds, Paper 13 main theorem |
+| `SimplicialIdentity.lean` | Simplicial reformulation: `triCount` = simplicial star cardinality, τ(G) as minimal local simplicial thickness |
 | `Verify.lean` | Computational verification on K3, K4, P3, C4 |
 | `Tests.lean` | Axiom checks and type-level sanity tests |
 
@@ -36,6 +37,13 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 |-----------|-----------|
 | `spectral_identity` | tr(L·A²) = Σdᵢ² − 6T |
 | `lambda2_upper_bound_regular` | λ₂(L) ≤ (nd² − 6T)/(d(n−d)) for d-regular G |
+
+### GAP #4 — Simplicial Identity (Level 2)
+| Lean name | Statement |
+|-----------|-----------|
+| `simplicial_identity` | `triCount G u v = (simplicialStar G u v).card` — triangle count equals simplicial star cardinality |
+| `corollary_A` | `triCount G u v > 0 → (simplicialStar G u v).Nonempty` — solidified edge is face of a 2-simplex |
+| `corollary_B` | `triCount G u v = 0 → simplicialStar G u v = ∅` — naked edge belongs to no 2-simplex |
 
 ### Paper 13 — Triangle graph spectral dominance
 | Lean name | Statement |
@@ -56,12 +64,14 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 | 12 | τ(G) lower bound via Cheeger | [10.5281/zenodo.18998928](https://doi.org/10.5281/zenodo.18998928) | ✅ Fully proved |
 | 13 | λ₂(T(G)) ≤ λ₂(G) for regular graphs | [10.5281/zenodo.18999097](https://doi.org/10.5281/zenodo.18999097) | ✅ Fully proved |
 | 14 | T(G) conjecture (general graphs) | [10.5281/zenodo.19018598](https://doi.org/10.5281/zenodo.19018598) | 📖 Open (regular case proved) |
+| GAP #4 | Simplicial identity: triCount = simplicial star | [10.5281/zenodo.19149901](https://doi.org/10.5281/zenodo.19149901) | ✅ Fully proved |
 
 ## Open Problems
 
 - `conjecture_tauG_le_algebraicConnectivity`: τ(G) ≤ λ₂(G) — open conjecture (Paper 11)
 - `sweep_pigeonhole`: technical lemma for Cheeger sweep argument
 - `lambda2_triangle_graph_le` (general case): λ₂(T(G)) ≤ λ₂(G) for non-regular graphs (Paper 14)
+- `simplicial_to_spectral_bridge`: τ(G) ≤ λ₂(G) as corollary of simplicial thickness (GAP #4 Level 3)
 
 ## Axiom Verification
 
