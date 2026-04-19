@@ -1,4 +1,5 @@
-import Topostability.Conjectures
+import Topostability.Paper11
+import Topostability.Paper13
 
 namespace Topostability
 

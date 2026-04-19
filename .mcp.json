@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "archon-lean-lsp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/workspaces/Archon/.archon-src/tools/lean-lsp-mcp",
+        "lean-lsp-mcp"
+      ],
+      "env": {}
+    }
+  }
+}
