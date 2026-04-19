@@ -700,6 +700,124 @@ lemma edge_degree_bound (f : V → ℝ) :
                 (by exact_mod_cast G.degree_le_maxDegree v) (sq_nonneg _)
           _ = 2 * ↑G.maxDegree * ∑ v : V, f v ^ 2 := by ring
 
+/-! ### Alon–Milman sign-flip helpers (for `sweep_pigeonhole`)
+
+The classical proof of the hard direction of Cheeger's inequality reduces
+the general Fiedler vector `f` to its positive part `f₊ := max f 0` by a
+sign-flip (WLOG `|{f > 0}| ≤ n/2`), then applies the `h²` Cauchy–Schwarz +
+pigeonhole argument on `f₊`. The following helpers encapsulate:
+
+1. **`pos_or_neg_small`** — at least one of `{f > 0}`, `{f < 0}` has size ≤ n/2.
+2. **`sq_sub_signsplit_le`** — pointwise `(a₊−b₊)² + (a₋−b₋)² ≤ (a−b)²`.
+3. **`sq_sub_max_zero_le`** — pointwise `(max a 0 − max b 0)² ≤ (a − b)²`.
+4. **`edge_sum_signsplit_le`** — Finset-level lift of (2) over edges.
+5. **`edge_sum_max_zero_le`** — Finset-level lift of (3) over edges.
+
+These are combined in `sweep_pigeonhole_aux` (the "small positive support" case),
+with `sweep_pigeonhole` then reducing the general case via Case A / Case B on
+the sign split. -/
+
+/-- **Helper 1** (sign pigeonhole): at least one of the sign sets
+`{v : f v > 0}` or `{v : f v < 0}` has cardinality `≤ n/2`.
+
+Both exceeding would give a disjoint union of cardinality `> n`. -/
+lemma pos_or_neg_small (f : V → ℝ) :
+    (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤ Fintype.card V / 2 ∨
+    (Finset.univ.filter fun w : V => f w < 0).card ≤ Fintype.card V / 2 := by
+  classical
+  by_contra hboth
+  push_neg at hboth
+  obtain ⟨hpos, hneg⟩ := hboth
+  have hdisj : Disjoint
+      (Finset.univ.filter fun w : V => (0:ℝ) < f w)
+      (Finset.univ.filter fun w : V => f w < 0) := by
+    rw [Finset.disjoint_filter]
+    intro w _ hw1 hw2; linarith
+  have hcup : ((Finset.univ.filter fun w : V => (0:ℝ) < f w) ∪
+               (Finset.univ.filter fun w : V => f w < 0)).card ≤
+              Fintype.card V :=
+    Finset.card_le_univ _
+  rw [Finset.card_union_of_disjoint hdisj] at hcup
+  omega
+
+/-- **Helper 3** (pointwise sign-split inequality): the "doubling" identity
+`(max a 0 − max b 0)² + (max (−a) 0 − max (−b) 0)² ≤ (a − b)²` on reals.
+
+This is the key pointwise step for Laplacian monotonicity: the positive and
+negative parts of `f` contribute edge-differences whose squares sum to ≤ the
+original edge-difference squared. -/
+lemma sq_sub_signsplit_le (a b : ℝ) :
+    (max a 0 - max b 0) ^ 2 + (max (-a) 0 - max (-b) 0) ^ 2 ≤ (a - b) ^ 2 := by
+  rcases le_or_lt 0 a with ha | ha <;> rcases le_or_lt 0 b with hb | hb
+  · -- a ≥ 0, b ≥ 0: (a-b)² + 0² = (a-b)²
+    rw [max_eq_left ha, max_eq_left hb,
+        max_eq_right (neg_nonpos_of_nonneg ha), max_eq_right (neg_nonpos_of_nonneg hb)]
+    nlinarith
+  · -- a ≥ 0, b < 0: a² + b² ≤ (a-b)² = a² - 2ab + b² (use -2ab ≥ 0)
+    rw [max_eq_left ha, max_eq_right hb.le,
+        max_eq_right (neg_nonpos_of_nonneg ha), max_eq_left (neg_nonneg.mpr hb.le)]
+    nlinarith [mul_nonneg ha (neg_nonneg.mpr hb.le)]
+  · -- a < 0, b ≥ 0: symmetric
+    rw [max_eq_right ha.le, max_eq_left hb,
+        max_eq_left (neg_nonneg.mpr ha.le), max_eq_right (neg_nonpos_of_nonneg hb)]
+    nlinarith [mul_nonneg (neg_nonneg.mpr ha.le) hb]
+  · -- a < 0, b < 0: 0² + (-a-(-b))² = (a-b)²
+    rw [max_eq_right ha.le, max_eq_right hb.le,
+        max_eq_left (neg_nonneg.mpr ha.le), max_eq_left (neg_nonneg.mpr hb.le)]
+    nlinarith
+
+/-- **Helper 2** (positive-part 1-Lipschitz, squared): `(max a 0 − max b 0)² ≤ (a − b)²`.
+
+Follows from `sq_sub_signsplit_le` by dropping the non-negative sign-down term. -/
+lemma sq_sub_max_zero_le (a b : ℝ) :
+    (max a 0 - max b 0) ^ 2 ≤ (a - b) ^ 2 := by
+  linarith [sq_sub_signsplit_le a b, sq_nonneg (max (-a) 0 - max (-b) 0)]
+
+/-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
+support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
+cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
+
+**Proof outline (Alon–Milman, to be formalized).** Apply the discrete coarea
+formula and Cauchy–Schwarz to `h := max f 0` (supported on `{f > 0}`, of size
+`≤ n/2`). The level cuts `T_t := {v : h v ≥ t}` for `t > 0` all have
+`|T_t| ≤ n/2`. Combining the factorization `|h_u² − h_v²| = |h_u − h_v|·(h_u + h_v)`
+(valid for non-negative `h`) with edge Cauchy–Schwarz, the eigenvalue equation
+`λ₂‖f‖² = ∑_e (f_u − f_v)²` and the degree bound
+`∑_e (f_u + f_v)² ≤ 2Δ‖f‖²` yields
+
+  `∑_k gap_k · |∂T_k|  ≤  √(2λ₂Δ) · ∑_k gap_k · |T_k|`,
+
+where the gaps and level cuts come from sorting `h` (equivalently `f` on its
+positive support). Pigeonhole picks a `k` with `|∂T_k|/|T_k| ≤ √(2λ₂Δ)`.
+
+**Formalization status.** This is the hard direction of Cheeger's inequality
+and is intentionally left as a single scoped `sorry` — the full Lean proof is
+estimated at several hundred lines and requires:
+(a) applying `discrete_coarea` to `h` using its own sorting permutation
+    (which coincides with `σ` on `supp h` since `h ≥ 0`);
+(b) a `Sym2`-lifted Cauchy–Schwarz on edge sums
+    (extending `boundary_cauchy_schwarz` from boundary to full `edgeFinset`);
+(c) a `(h_u + h_v)²`-type degree bound paralleling `edge_degree_bound`;
+(d) extraction of a non-empty complement for the chosen sweep cut (uses
+    `hfsum = 0` and `hf ≠ 0` to force both sign supports non-empty).
+The pointwise inequalities `sq_sub_max_zero_le` and `sq_sub_signsplit_le`
+above will provide the Laplacian monotonicity pieces for (b). -/
+lemma sweep_pigeonhole_aux
+    (_hconn : G.Connected) (_hV : Fintype.card V ≥ 2)
+    (f : V → ℝ) (_hf : f ≠ 0) (_hfsum : ∑ v : V, f v = 0)
+    (_hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f)
+    (_hposSmall : (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤
+        Fintype.card V / 2) :
+    ∃ (S : Finset V), S.Nonempty ∧ Sᶜ.Nonempty ∧
+      S.card ≤ Fintype.card V / 2 ∧
+      ((edgeBoundary G S).card : ℝ) / ↑S.card ≤
+        Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) := by
+  -- TODO(Cheeger Alon–Milman): finish the h² Cauchy–Schwarz + pigeonhole
+  -- chain using `discrete_coarea`, `edge_degree_bound`,
+  -- `sq_sub_max_zero_le`, `sq_sub_signsplit_le`, and `boundary_cauchy_schwarz`.
+  -- See docstring for the full proof outline.
+  sorry
+
 /-- **Sub-lemma 5**: Pigeonhole — ∃ good threshold. -/
 lemma sweep_pigeonhole
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
@@ -709,56 +827,36 @@ lemma sweep_pigeonhole
       S.card ≤ Fintype.card V / 2 ∧
       ((edgeBoundary G S).card : ℝ) / ↑S.card ≤
         Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) := by
-  -- Step 1: Sorting permutation σ ordering vertices by f-values
-  obtain ⟨σ, hσ⟩ : ∃ σ : Fin (Fintype.card V) ≃ V,
-      ∀ i j : Fin (Fintype.card V), i ≤ j → f (σ i) ≤ f (σ j) := by
-    -- Take any equivalence e : Fin n ≃ V, sort (f ∘ e), compose.
-    let e : Fin (Fintype.card V) ≃ V := (Fintype.equivFin V).symm
-    let g : Fin (Fintype.card V) → ℝ := f ∘ e
-    refine ⟨(Tuple.sort g).trans e, fun i j hij => ?_⟩
-    -- f ((Tuple.sort g).trans e i) = (g ∘ Tuple.sort g) i — monotone by Tuple.monotone_sort
-    exact Tuple.monotone_sort g hij
-  -- Step 2: Assemble proved bounds
-  -- Discrete coarea: ∑_e |f u - f v| = ∑_k gap_k * |∂S_k|
-  have hcoarea := discrete_coarea G f σ hσ hV
-  -- Edge-degree bound: ∑_e (f u - f v)² ≤ 2Δ ‖f‖²
-  have hΔ := edge_degree_bound G f
-  -- Quadratic form = edge sum (proved)
-  have hquad := quadratic_form_eq_edge_sum G f
-  -- Eigenvalue equation gives: ∑_e (fu-fv)² = λ₂ ‖f‖²
-  have heig_eq : algebraicConnectivity G hV * ∑ v : V, f v ^ 2 =
-      ∑ e ∈ G.edgeFinset,
-        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e := by
-    rw [← hquad]
-    -- toLinearMap₂' L f f = f ⬝ (L *ᵥ f) = f ⬝ (λ₂ • f) = λ₂ * (f ⬝ f)
-    rw [Matrix.toLinearMap₂'_apply']
-    rw [show (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f from hfeig]
-    simp only [dotProduct, Pi.smul_apply, smul_eq_mul]
-    rw [Finset.mul_sum]
-    refine Finset.sum_congr rfl fun v _ => ?_
-    ring
-  -- Step 3: Each sweep cut S_k = {v | f v ≥ f(σ(k+1))} is nonempty
-  have hSne : ∀ k : Fin (Fintype.card V - 1),
-      (Finset.univ.filter fun w => f w ≥ f (σ ⟨k.val + 1, by omega⟩)).Nonempty :=
-    fun k => ⟨σ ⟨k.val + 1, by omega⟩,
-      Finset.mem_filter.mpr ⟨Finset.mem_univ _, le_refl _⟩⟩
-  -- Step 4: Pigeonhole — ∃ k with complement nonempty, |S_k| ≤ n/2,
-  -- and |∂S_k|/|S_k| ≤ √(2λ₂Δ)
-  -- Uses hcoarea, heig_eq, hΔ, hfsum, and Cauchy–Schwarz (boundary_cauchy_schwarz)
-  obtain ⟨k, hcne, hcard, hbound⟩ :
-      ∃ k : Fin (Fintype.card V - 1),
-        (Finset.univ.filter fun w => f w ≥ f (σ ⟨k.val + 1, by omega⟩))ᶜ.Nonempty ∧
-        (Finset.univ.filter fun w =>
-          f w ≥ f (σ ⟨k.val + 1, by omega⟩)).card ≤ Fintype.card V / 2 ∧
-        ((edgeBoundary G (Finset.univ.filter fun w =>
-          f w ≥ f (σ ⟨k.val + 1, by omega⟩))).card : ℝ) /
-          ↑(Finset.univ.filter fun w =>
-            f w ≥ f (σ ⟨k.val + 1, by omega⟩)).card ≤
-          Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) := by
-    sorry -- Pigeonhole on sweep cuts using hcoarea, heig_eq, hΔ, hfsum
-  -- Step 5: Provide the sweep cut witness
-  exact ⟨Finset.univ.filter fun w => f w ≥ f (σ ⟨k.val + 1, by omega⟩),
-    hSne k, hcne, hcard, hbound⟩
+  -- **Sign reduction** (`pos_or_neg_small`): WLOG the positive support is small.
+  -- In Case A we apply `sweep_pigeonhole_aux` directly; in Case B we apply it
+  -- to `-f`, whose positive support `{(-f) > 0} = {f < 0}` is the small side,
+  -- and whose Laplacian eigen-equation and sum-zero property are preserved
+  -- under negation. The auxiliary lemma returns a generic `S : Finset V`, so
+  -- no translation back to the `S_k` form is needed.
+  rcases pos_or_neg_small f with hposSmall | hnegSmall
+  · -- Case A: |{f > 0}| ≤ n/2
+    exact sweep_pigeonhole_aux G hconn hV f hf hfsum hfeig hposSmall
+  · -- Case B: |{f < 0}| ≤ n/2 — reduce to Case A via `-f`.
+    have hf' : (-f) ≠ 0 := by
+      intro hneg
+      apply hf
+      funext v
+      have := congrFun hneg v
+      simp only [Pi.neg_apply, Pi.zero_apply, neg_eq_zero] at this
+      exact this
+    have hfsum' : ∑ v : V, (-f) v = 0 := by
+      simp only [Pi.neg_apply, Finset.sum_neg_distrib, hfsum, neg_zero]
+    have hfeig' : (G.lapMatrix ℝ).mulVec (-f) =
+        algebraicConnectivity G hV • (-f) := by
+      rw [Matrix.mulVec_neg, hfeig, ← smul_neg]
+    have hposSmall' :
+        (Finset.univ.filter fun w : V => (0:ℝ) < (-f) w).card ≤
+          Fintype.card V / 2 := by
+      refine le_trans (le_of_eq ?_) hnegSmall
+      congr 1
+      ext w
+      simp [Pi.neg_apply, neg_pos]
+    exact sweep_pigeonhole_aux G hconn hV (-f) hf' hfsum' hfeig' hposSmall'
 
 /-- Sweep cut bound: ∃ threshold with expansion ≤ √(2λ₂Δ).
 Follows from `sweep_pigeonhole`. -/
