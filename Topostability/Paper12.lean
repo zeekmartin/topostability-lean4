@@ -1045,6 +1045,37 @@ lemma layer_cake_sum (g : V → ℝ) (σ : Fin (Fintype.card V) ≃ V)
     rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
   linarith [key]
 
+/-- **Step 9a (pointwise)** — `(max a 0)² + (max (−a) 0)² = a²`. -/
+lemma sq_max_sq_neg_max (a : ℝ) : (max a 0) ^ 2 + (max (-a) 0) ^ 2 = a ^ 2 := by
+  rcases le_or_gt 0 a with ha | ha
+  · rw [max_eq_left ha, max_eq_right (neg_nonpos_of_nonneg ha)]; ring
+  · rw [max_eq_right ha.le, max_eq_left (neg_nonneg.mpr ha.le)]; ring
+
+/-- **Step 9a (vertex sum)** — the positive and negative parts split the norm:
+`‖f₊‖² + ‖f₋‖² = ‖f‖²`. -/
+lemma norm_pos_neg_split (f : V → ℝ) :
+    (∑ v : V, (max (f v) 0) ^ 2) + (∑ v : V, (max (-(f v)) 0) ^ 2)
+      = ∑ v : V, (f v) ^ 2 := by
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl; intro v _
+  exact sq_max_sq_neg_max (f v)
+
+/-- **Step 9b** — doubled Laplacian monotonicity (edge lift of `sq_sub_signsplit_le`):
+`∑_e (f₊_u − f₊_v)² + ∑_e (f₋_u − f₋_v)² ≤ ∑_e (f_u − f_v)²`. -/
+lemma edge_signsplit_le (f : V → ℝ) :
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) ^ 2,
+          fun u v => by ring⟩ e)
+    + (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (-(f u)) 0 - max (-(f v)) 0) ^ 2,
+          fun u v => by ring⟩ e)
+    ≤ ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e := by
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_le_sum; intro e he
+  induction e using Sym2.ind with
+  | _ u v => exact sq_sub_signsplit_le (f u) (f v)
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
