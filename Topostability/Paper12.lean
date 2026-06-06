@@ -1175,6 +1175,49 @@ lemma rayleigh_truncation_le (f : V → ℝ) (hV : Fintype.card V ≥ 2)
         dotProduct_smul, smul_eq_mul, dot_h_f]
   linarith [hstep1, hstep2]
 
+/-- Numerator bound: `∑_e |h_u² − h_v²| ≤ √(2λ₂Δ)·‖h‖²` for `h = max f 0`.
+Cauchy–Schwarz, then `rayleigh_truncation_le` and `edge_sum_add_sq_degree_bound`,
+then `Real.sqrt` algebra. -/
+lemma sweep_numerator_bound (f : V → ℝ) (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
+    (hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f) :
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => |(max (f u) 0) ^ 2 - (max (f v) 0) ^ 2|,
+          fun u v => by simp only [abs_sub_comm]⟩ e)
+      ≤ Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree)
+          * ∑ v : V, (max (f v) 0) ^ 2 := by
+  have hnn : ∀ v, 0 ≤ max (f v) 0 := fun v => le_max_right _ _
+  have hHnn : 0 ≤ ∑ v : V, (max (f v) 0) ^ 2 := Finset.sum_nonneg (fun v _ => sq_nonneg _)
+  have hac : 0 ≤ algebraicConnectivity G hV := (algebraicConnectivity_pos G hconn hV).le
+  have hΔ : 0 ≤ (G.maxDegree : ℝ) := Nat.cast_nonneg _
+  have hcs := edge_sqdiff_cauchy_schwarz G (fun v => max (f v) 0) hnn
+  have hSb := edge_sum_add_sq_degree_bound G (fun v => max (f v) 0)
+  simp only [] at hcs hSb
+  have hD := rayleigh_truncation_le G f hV hfeig
+  set N := ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => |(max (f u) 0) ^ 2 - (max (f v) 0) ^ 2|,
+        fun u v => by simp only [abs_sub_comm]⟩ e with hNdef
+  set Ds := ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) ^ 2, fun u v => by ring⟩ e with hDdef
+  set Ss := ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => (max (f u) 0 + max (f v) 0) ^ 2, fun u v => by ring⟩ e with hSdef
+  set H := ∑ v : V, (max (f v) 0) ^ 2 with hHdef
+  have hNnn : 0 ≤ N := by
+    rw [hNdef]; apply Finset.sum_nonneg; intro e he
+    induction e using Sym2.ind with | _ u v => exact abs_nonneg _
+  have hSsnn : 0 ≤ Ss := by
+    rw [hSdef]; apply Finset.sum_nonneg; intro e he
+    induction e using Sym2.ind with | _ u v => exact sq_nonneg _
+  have hN2 : N ^ 2 ≤ (2 * algebraicConnectivity G hV * ↑G.maxDegree) * H ^ 2 := by
+    calc N ^ 2 ≤ Ds * Ss := hcs
+      _ ≤ (algebraicConnectivity G hV * H) * (2 * ↑G.maxDegree * H) :=
+          mul_le_mul hD hSb hSsnn (mul_nonneg hac hHnn)
+      _ = (2 * algebraicConnectivity G hV * ↑G.maxDegree) * H ^ 2 := by ring
+  calc N = Real.sqrt (N ^ 2) := (Real.sqrt_sq hNnn).symm
+    _ ≤ Real.sqrt ((2 * algebraicConnectivity G hV * ↑G.maxDegree) * H ^ 2) :=
+        Real.sqrt_le_sqrt hN2
+    _ = Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) * H := by
+        rw [Real.sqrt_mul (by positivity), Real.sqrt_sq hHnn]
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
