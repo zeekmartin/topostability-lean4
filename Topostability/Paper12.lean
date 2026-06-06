@@ -931,6 +931,34 @@ lemma edge_sqdiff_cauchy_schwarz (h : V → ℝ) (hnn : ∀ v, 0 ≤ h v) :
     _ ≤ (∑ e ∈ G.edgeFinset, F e ^ 2) * (∑ e ∈ G.edgeFinset, Gg e ^ 2) := key
     _ = _ := by rw [e2, e3]
 
+/-- **Step 7a** — squaring preserves the sort order for non-negative `h`: if `σ`
+lists `h` ascending and `h ≥ 0`, then `σ` also lists `h²` ascending. This is the
+prerequisite that lets `discrete_coarea` be applied to `h²`. -/
+lemma sq_sorted_of_nonneg (h : V → ℝ) (hnn : ∀ v, 0 ≤ h v)
+    (σ : Fin (Fintype.card V) ≃ V)
+    (hσ : ∀ i j, i ≤ j → h (σ i) ≤ h (σ j)) :
+    ∀ i j : Fin (Fintype.card V), i ≤ j → (h (σ i)) ^ 2 ≤ (h (σ j)) ^ 2 := by
+  intro i j hij
+  rw [pow_two, pow_two]
+  exact mul_self_le_mul_self (hnn (σ i)) (hσ i j hij)
+
+/-- **Step 7b** — discrete coarea formula for `h²`: applies `discrete_coarea` to
+the non-negative function `h²` using `h`'s own sort `σ`. The level cuts are
+`{w : (h w)² ≥ (h (σ_{k+1}))²}`. -/
+lemma coarea_sq (h : V → ℝ) (hnn : ∀ v, 0 ≤ h v)
+    (σ : Fin (Fintype.card V) ≃ V)
+    (hσ : ∀ i j, i ≤ j → h (σ i) ≤ h (σ j))
+    (hV : Fintype.card V ≥ 2) :
+    ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => |(h u) ^ 2 - (h v) ^ 2|,
+          fun u v => by simp only [abs_sub_comm]⟩ e =
+      ∑ k : Fin (Fintype.card V - 1),
+        ((h (σ ⟨k.val + 1, by omega⟩)) ^ 2 - (h (σ ⟨k.val, by omega⟩)) ^ 2) *
+        ((edgeBoundary G (Finset.univ.filter fun w =>
+          (h w) ^ 2 ≥ (h (σ ⟨k.val + 1, by omega⟩)) ^ 2)).card : ℝ) := by
+  exact discrete_coarea G (fun v => (h v) ^ 2) σ
+    (sq_sorted_of_nonneg h hnn σ hσ) hV
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
