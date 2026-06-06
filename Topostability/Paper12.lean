@@ -748,7 +748,7 @@ negative parts of `f` contribute edge-differences whose squares sum to ≤ the
 original edge-difference squared. -/
 lemma sq_sub_signsplit_le (a b : ℝ) :
     (max a 0 - max b 0) ^ 2 + (max (-a) 0 - max (-b) 0) ^ 2 ≤ (a - b) ^ 2 := by
-  rcases le_or_lt 0 a with ha | ha <;> rcases le_or_lt 0 b with hb | hb
+  rcases le_or_gt 0 a with ha | ha <;> rcases le_or_gt 0 b with hb | hb
   · -- a ≥ 0, b ≥ 0: (a-b)² + 0² = (a-b)²
     rw [max_eq_left ha, max_eq_left hb,
         max_eq_right (neg_nonpos_of_nonneg ha), max_eq_right (neg_nonpos_of_nonneg hb)]
@@ -803,7 +803,7 @@ estimated at several hundred lines and requires:
 The pointwise inequalities `sq_sub_max_zero_le` and `sq_sub_signsplit_le`
 above will provide the Laplacian monotonicity pieces for (b). -/
 lemma sweep_pigeonhole_aux
-    (_hconn : G.Connected) (_hV : Fintype.card V ≥ 2)
+    (_hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (f : V → ℝ) (_hf : f ≠ 0) (_hfsum : ∑ v : V, f v = 0)
     (_hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f)
     (_hposSmall : (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤
