@@ -1076,6 +1076,105 @@ lemma edge_signsplit_le (f : V → ℝ) :
   induction e using Sym2.ind with
   | _ u v => exact sq_sub_signsplit_le (f u) (f v)
 
+/-- **Bilinear edge identity** (polarization of `quadratic_form_eq_edge_sum`):
+`∑_e (x_u − x_v)(y_u − y_v) = xᵀ L y`. -/
+lemma bilinear_edge_sum (x y : V → ℝ) :
+    ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (x u - x v) * (y u - y v), fun u v => by ring⟩ e
+      = dotProduct x ((G.lapMatrix ℝ).mulVec y) := by
+  have happ : ∀ a b : V → ℝ,
+      Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) a b = dotProduct a ((G.lapMatrix ℝ).mulVec b) := by
+    intro a b; rw [Matrix.toLinearMap₂'_apply']
+  have hsym : dotProduct y ((G.lapMatrix ℝ).mulVec x)
+      = dotProduct x ((G.lapMatrix ℝ).mulVec y) := by
+    rw [Matrix.dotProduct_mulVec, ← Matrix.mulVec_transpose,
+        show (G.lapMatrix ℝ).transpose = G.lapMatrix ℝ from G.isSymm_lapMatrix (R := ℝ)]
+    exact dotProduct_comm _ _
+  have hpolar : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) (x + y) (x + y)
+      = dotProduct x ((G.lapMatrix ℝ).mulVec x)
+        + 2 * dotProduct x ((G.lapMatrix ℝ).mulVec y)
+        + dotProduct y ((G.lapMatrix ℝ).mulVec y) := by
+    simp only [map_add, LinearMap.add_apply, happ]
+    rw [hsym]; ring
+  have hedge :
+      (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => ((x + y) u - (x + y) v) ^ 2, fun u v => by ring⟩ e)
+      = (∑ e ∈ G.edgeFinset,
+          Sym2.lift ⟨fun u v => (x u - x v) ^ 2, fun u v => by ring⟩ e)
+        + 2 * (∑ e ∈ G.edgeFinset,
+          Sym2.lift ⟨fun u v => (x u - x v) * (y u - y v), fun u v => by ring⟩ e)
+        + (∑ e ∈ G.edgeFinset,
+          Sym2.lift ⟨fun u v => (y u - y v) ^ 2, fun u v => by ring⟩ e) := by
+    rw [Finset.mul_sum, ← Finset.sum_add_distrib, ← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl; intro e _
+    induction e using Sym2.ind with
+    | _ u v => simp only [Sym2.lift_mk, Pi.add_apply]; ring
+  have hx : dotProduct x ((G.lapMatrix ℝ).mulVec x)
+      = ∑ e ∈ G.edgeFinset, Sym2.lift ⟨fun u v => (x u - x v) ^ 2, fun u v => by ring⟩ e :=
+    (happ x x).symm.trans (quadratic_form_eq_edge_sum G x)
+  have hy : dotProduct y ((G.lapMatrix ℝ).mulVec y)
+      = ∑ e ∈ G.edgeFinset, Sym2.lift ⟨fun u v => (y u - y v) ^ 2, fun u v => by ring⟩ e :=
+    (happ y y).symm.trans (quadratic_form_eq_edge_sum G y)
+  have qfxy := quadratic_form_eq_edge_sum G (x + y)
+  linarith [hpolar, hedge, hx, hy, qfxy]
+
+/-- Pointwise truncation inequality: `(f₊_u − f₊_v)² ≤ (f₊_u − f₊_v)(f_u − f_v)`. -/
+lemma sq_sub_max_le_mul (a b : ℝ) :
+    (max a 0 - max b 0) ^ 2 ≤ (max a 0 - max b 0) * (a - b) := by
+  rcases le_or_gt 0 a with ha | ha <;> rcases le_or_gt 0 b with hb | hb
+  · rw [max_eq_left ha, max_eq_left hb]; nlinarith
+  · rw [max_eq_left ha, max_eq_right hb.le]
+    nlinarith [mul_nonneg ha (neg_nonneg.mpr hb.le)]
+  · rw [max_eq_right ha.le, max_eq_left hb]
+    nlinarith [mul_nonneg (neg_nonneg.mpr ha.le) hb]
+  · rw [max_eq_right ha.le, max_eq_right hb.le]; nlinarith
+
+/-- `⟨f₊, f⟩ = ‖f₊‖²` pointwise: `max (f v) 0 · f v = (max (f v) 0)²`. -/
+lemma dot_h_f (f : V → ℝ) :
+    dotProduct (fun v => max (f v) 0) f = ∑ v : V, (max (f v) 0) ^ 2 := by
+  show ∑ v : V, (max (f v) 0) * f v = ∑ v : V, (max (f v) 0) ^ 2
+  apply Finset.sum_congr rfl; intro v _
+  rcases le_or_gt 0 (f v) with h | h
+  · rw [max_eq_left h]; ring
+  · rw [max_eq_right h.le]; ring
+
+/-- **Truncation preserves the Rayleigh quotient** (Trevisan / Houdré–Tetali):
+for a Fiedler vector (`L f = λ₂ f`) and `h = max f 0`,
+`∑_e (h_u − h_v)² ≤ λ₂ · ‖h‖²`. The key fact eliminating the `‖f‖/‖h‖` factor;
+all `h`-sweep cuts then lie in `{f > 0}` (size ≤ n/2), so no doubling is needed. -/
+lemma rayleigh_truncation_le (f : V → ℝ) (hV : Fintype.card V ≥ 2)
+    (hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f) :
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) ^ 2, fun u v => by ring⟩ e)
+      ≤ algebraicConnectivity G hV * ∑ v : V, (max (f v) 0) ^ 2 := by
+  have hstep1 :
+      (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) ^ 2, fun u v => by ring⟩ e)
+      ≤ ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) * (f u - f v),
+          fun u v => by ring⟩ e := by
+    apply Finset.sum_le_sum; intro e he
+    induction e using Sym2.ind with
+    | _ u v => exact sq_sub_max_le_mul (f u) (f v)
+  have hconv :
+      (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) * (f u - f v),
+          fun u v => by ring⟩ e)
+      = ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v =>
+          ((fun w => max (f w) 0) u - (fun w => max (f w) 0) v) * (f u - f v),
+          fun u v => by ring⟩ e := by
+    apply Finset.sum_congr rfl; intro e _
+    induction e using Sym2.ind with | _ u v => rfl
+  have hstep2 :
+      (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) * (f u - f v),
+          fun u v => by ring⟩ e)
+      = algebraicConnectivity G hV * ∑ v : V, (max (f v) 0) ^ 2 := by
+    rw [hconv, bilinear_edge_sum G (fun w => max (f w) 0) f, hfeig,
+        dotProduct_smul, smul_eq_mul, dot_h_f]
+  linarith [hstep1, hstep2]
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
