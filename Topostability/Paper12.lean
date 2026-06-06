@@ -773,6 +773,164 @@ lemma sq_sub_max_zero_le (a b : ℝ) :
     (max a 0 - max b 0) ^ 2 ≤ (a - b) ^ 2 := by
   linarith [sq_sub_signsplit_le a b, sq_nonneg (max (-a) 0 - max (-b) 0)]
 
+/-! ### Sweep / Cauchy–Schwarz helpers for `sweep_pigeonhole_aux`
+
+The following six lemmas (Modal-verified individually) build the Alon–Milman
+machinery for the hard direction of Cheeger. They are the formalized analogues
+of Steps 1–6 of `informal/cheeger_sweep_pigeonhole.md`. The remaining
+assembly (coarea for `h²`, the layer-cake norm identity, and the pigeonhole)
+is still under construction in `sweep_pigeonhole_aux`. -/
+
+/-- **Step 1** — sorting bijection: for any real weight `g : V → ℝ` there is an
+equivalence `σ : Fin n ≃ V` listing the vertices in ascending `g`-order. This is
+the `σ`/`hσ` pair that `discrete_coarea` consumes. -/
+lemma exists_sort_equiv (g : V → ℝ) :
+    ∃ σ : Fin (Fintype.card V) ≃ V,
+      ∀ i j : Fin (Fintype.card V), i ≤ j → g (σ i) ≤ g (σ j) := by
+  classical
+  let e : V ≃ Fin (Fintype.card V) := Fintype.equivFin V
+  refine ⟨(Tuple.sort (g ∘ e.symm)).trans e.symm, ?_⟩
+  intro i j hij
+  have hmono := Tuple.monotone_sort (g ∘ e.symm)
+  have h := hmono hij
+  simpa only [Equiv.trans_apply, Function.comp_apply] using h
+
+/-- **Step 2** — positive-part level sets are small. With `h := max f 0`, any
+upper level set `{w : t ≤ h w}` at threshold `t > 0` is contained in
+`{w : 0 < f w}`, hence has cardinality `≤ n/2` under the small-positive-support
+hypothesis. These are exactly the sweep cuts that must be `≤ n/2`. -/
+lemma pos_part_level_small (f : V → ℝ) (t : ℝ) (ht : 0 < t)
+    (hsmall : (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤
+        Fintype.card V / 2) :
+    (Finset.univ.filter fun w : V => t ≤ max (f w) 0).card ≤
+      Fintype.card V / 2 := by
+  refine le_trans (Finset.card_le_card ?_) hsmall
+  intro w hw
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hw ⊢
+  rcases le_or_gt (f w) 0 with h | h
+  · rw [max_eq_right h] at hw; linarith
+  · exact h
+
+/-- **Step 3** — eigen chain: for a Fiedler vector (`L f = λ₂ f`),
+`λ₂ · ‖f‖² = ∑_e (f_u − f_v)²` in this file's edge-sum form. Bridges the
+matrix eigen-equation hypothesis to the combinatorial edge sum via
+`quadratic_form_eq_edge_sum`. -/
+lemma eigen_edge_chain (f : V → ℝ) (hV : Fintype.card V ≥ 2)
+    (hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f) :
+    algebraicConnectivity G hV * (∑ v : V, f v ^ 2) =
+      ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e := by
+  have heig : dotProduct f ((G.lapMatrix ℝ).mulVec f) =
+      algebraicConnectivity G hV * dotProduct f f := by
+    rw [hfeig]; simp only [dotProduct, Pi.smul_apply, smul_eq_mul]
+    simp_rw [mul_comm (f _) (algebraicConnectivity G hV * f _),
+      show ∀ x, algebraicConnectivity G hV * f x * f x
+            = f x ^ 2 * algebraicConnectivity G hV from fun x => by ring]
+    rw [← Finset.sum_mul]; ring
+  have hlm : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f =
+      dotProduct f ((G.lapMatrix ℝ).mulVec f) := by
+    rw [Matrix.toLinearMap₂'_apply']
+  have hqf := quadratic_form_eq_edge_sum G f
+  rw [hlm, heig] at hqf
+  have hdot : dotProduct f f = ∑ v, (f v) ^ 2 := by simp [dotProduct, sq]
+  rw [hdot] at hqf
+  exact hqf
+
+/-- **Step 4** — positive-part Laplacian monotonicity (edge lift):
+`∑_e (max f_u 0 − max f_v 0)² ≤ ∑_e (f_u − f_v)²`. Finset-level lift of the
+pointwise `sq_sub_max_zero_le`. -/
+lemma edge_sum_max_zero_le (f : V → ℝ) :
+    ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => (max (f u) 0 - max (f v) 0) ^ 2,
+        fun u v => by ring⟩ e ≤
+    ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e := by
+  apply Finset.sum_le_sum
+  intro e he
+  induction e using Sym2.ind with
+  | _ u v => exact sq_sub_max_zero_le (f u) (f v)
+
+/-- **Step 5** — "sum" degree bound: `∑_e (h_u + h_v)² ≤ 2Δ · ‖h‖²`. Mirrors
+`edge_degree_bound` (which is for the difference), via `(a+b)² ≤ 2(a²+b²)` and
+`weighted_edge_vertex_sum`. Supplies the second Cauchy–Schwarz factor. -/
+lemma edge_sum_add_sq_degree_bound (h : V → ℝ) :
+    ∑ e ∈ G.edgeFinset,
+      Sym2.lift ⟨fun u v => (h u + h v) ^ 2, fun u v => by ring⟩ e ≤
+      2 * ↑G.maxDegree * ∑ v : V, h v ^ 2 := by
+  have hineq : ∀ a b : ℝ, (a + b) ^ 2 ≤ 2 * (a ^ 2 + b ^ 2) := by
+    intro a b; nlinarith [sq_nonneg (a - b)]
+  calc ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (h u + h v) ^ 2, fun u v => by ring⟩ e
+    _ ≤ ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => 2 * (h u ^ 2 + h v ^ 2), fun u v => by ring⟩ e := by
+        apply Finset.sum_le_sum; intro e he
+        induction e using Sym2.ind with | _ u v => exact hineq (h u) (h v)
+    _ ≤ 2 * ↑G.maxDegree * ∑ v : V, h v ^ 2 := by
+        calc ∑ e ∈ G.edgeFinset,
+            Sym2.lift ⟨fun u v => 2 * (h u ^ 2 + h v ^ 2), fun u v => by ring⟩ e
+          _ = 2 * ∑ v : V, ↑(G.degree v) * h v ^ 2 := by
+              rw [show ∑ e ∈ G.edgeFinset, Sym2.lift ⟨fun u v =>
+                  2 * (h u ^ 2 + h v ^ 2), fun u v => by ring⟩ e =
+                2 * ∑ e ∈ G.edgeFinset, Sym2.lift ⟨fun u v =>
+                  h u ^ 2 + h v ^ 2, fun u v => by ring⟩ e from by
+                    rw [Finset.mul_sum]; congr 1; ext e
+                    induction e using Sym2.ind with | _ u v =>
+                      simp only [Sym2.lift_mk]]
+              rw [weighted_edge_vertex_sum]
+          _ ≤ 2 * (↑G.maxDegree * ∑ v : V, h v ^ 2) := by
+              apply mul_le_mul_of_nonneg_left _ (by norm_num : (0:ℝ) ≤ 2)
+              rw [Finset.mul_sum]
+              apply Finset.sum_le_sum; intro v _
+              exact mul_le_mul_of_nonneg_right
+                (by exact_mod_cast G.degree_le_maxDegree v) (sq_nonneg _)
+          _ = 2 * ↑G.maxDegree * ∑ v : V, h v ^ 2 := by ring
+
+/-- **Step 6** — edge Cauchy–Schwarz for the squared function (`h ≥ 0`):
+`(∑_e |h_u² − h_v²|)² ≤ (∑_e (h_u − h_v)²) · (∑_e (h_u + h_v)²)`.
+Uses `|h_u² − h_v²| = |h_u − h_v|·(h_u + h_v)` then discrete Cauchy–Schwarz. -/
+lemma edge_sqdiff_cauchy_schwarz (h : V → ℝ) (hnn : ∀ v, 0 ≤ h v) :
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => |h u ^ 2 - h v ^ 2|,
+          fun u v => by simp only [abs_sub_comm]⟩ e) ^ 2 ≤
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (h u - h v) ^ 2, fun u v => by ring⟩ e) *
+    (∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (h u + h v) ^ 2, fun u v => by ring⟩ e) := by
+  -- `let` (not `set`) so the Sym2.lift applications stay defeq-reducible.
+  let F : Sym2 V → ℝ :=
+    Sym2.lift ⟨fun u v => |h u - h v|, fun u v => by simp only [abs_sub_comm]⟩
+  let Gg : Sym2 V → ℝ :=
+    Sym2.lift ⟨fun u v => h u + h v, fun u v => by ring⟩
+  have key := Finset.sum_mul_sq_le_sq_mul_sq G.edgeFinset F Gg
+  have e1 : ∑ e ∈ G.edgeFinset, F e * Gg e =
+      ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => |h u ^ 2 - h v ^ 2|,
+          fun u v => by simp only [abs_sub_comm]⟩ e := by
+    apply Finset.sum_congr rfl; intro e _
+    induction e using Sym2.ind with
+    | _ u v =>
+      show |h u - h v| * (h u + h v) = |h u ^ 2 - h v ^ 2|
+      rw [show h u ^ 2 - h v ^ 2 = (h u - h v) * (h u + h v) by ring, abs_mul,
+          abs_of_nonneg (by linarith [hnn u, hnn v] : (0:ℝ) ≤ h u + h v)]
+  have e2 : ∑ e ∈ G.edgeFinset, F e ^ 2 =
+      ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (h u - h v) ^ 2, fun u v => by ring⟩ e := by
+    apply Finset.sum_congr rfl; intro e _
+    induction e using Sym2.ind with
+    | _ u v => show |h u - h v| ^ 2 = (h u - h v) ^ 2; rw [sq_abs]
+  have e3 : ∑ e ∈ G.edgeFinset, Gg e ^ 2 =
+      ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (h u + h v) ^ 2, fun u v => by ring⟩ e := by
+    apply Finset.sum_congr rfl; intro e _
+    induction e using Sym2.ind with
+    | _ u v => rfl
+  calc (∑ e ∈ G.edgeFinset,
+          Sym2.lift ⟨fun u v => |h u ^ 2 - h v ^ 2|,
+            fun u v => by simp only [abs_sub_comm]⟩ e) ^ 2
+      = (∑ e ∈ G.edgeFinset, F e * Gg e) ^ 2 := by rw [e1]
+    _ ≤ (∑ e ∈ G.edgeFinset, F e ^ 2) * (∑ e ∈ G.edgeFinset, Gg e ^ 2) := key
+    _ = _ := by rw [e2, e3]
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
