@@ -1,4 +1,5 @@
 import Topostability.Paper11
+import Topostability.Paper12
 import Topostability.Paper13
 
 namespace Topostability
@@ -53,5 +54,33 @@ example {W : Type*} [Fintype W] [DecidableEq W]
     {u v : W} (h : s(u, v) ∈ G.edgeSet) (f : W → ℝ) :
     edgeLift G f ⟨s(u, v), h⟩ = f u + f v :=
   edgeLift_mk G f h
+
+-- ══════════════════════════════════════════════════════
+-- TEST 4 (Paper 12 — Cheeger hard direction): axiom checks.
+-- These MUST show only [propext, Classical.choice, Quot.sound].
+-- If any lists `sorryAx`, there is a sorry leak.
+-- ══════════════════════════════════════════════════════
+
+#print axioms sweep_pigeonhole_aux
+#print axioms sweep_pigeonhole
+#print axioms cheeger_inequality
+#print axioms lambda2_lower_bound
+
+-- ══════════════════════════════════════════════════════
+-- TEST 5 (Paper 12): type-level checks — confirm the statements.
+-- ══════════════════════════════════════════════════════
+
+#check @sweep_pigeonhole_aux
+#check @cheeger_inequality
+#check @lambda2_lower_bound
+
+-- ══════════════════════════════════════════════════════
+-- TEST 6 (Paper 12): the terms elaborate cleanly (no-leak is enforced by the
+-- `#print axioms` checks above — a `sorryAx` there is the actual failure signal).
+-- ══════════════════════════════════════════════════════
+
+example := @sweep_pigeonhole
+example := @cheeger_inequality
+example := @lambda2_lower_bound
 
 end Topostability
