@@ -1218,50 +1218,125 @@ lemma sweep_numerator_bound (f : V → ℝ) (hconn : G.Connected) (hV : Fintype.
     _ = Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) * H := by
         rw [Real.sqrt_mul (by positivity), Real.sqrt_sq hHnn]
 
-/-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
-support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
-cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
+/-- Weighted pigeonhole: if `∑ gᵢdᵢ ≤ c·∑ gᵢtᵢ` with non-negative weights `g`
+and some positive weight, then some index with positive weight has `dᵢ ≤ c·tᵢ`. -/
+lemma exists_pos_ratio {ι : Type*} (s : Finset ι) (g d t : ι → ℝ) (c : ℝ)
+    (hg : ∀ i ∈ s, 0 ≤ g i)
+    (hpos : ∃ i ∈ s, 0 < g i)
+    (hsum : ∑ i ∈ s, g i * d i ≤ c * ∑ i ∈ s, g i * t i) :
+    ∃ i ∈ s, 0 < g i ∧ d i ≤ c * t i := by
+  by_contra hcon
+  push_neg at hcon
+  have hlt : ∑ i ∈ s, g i * (c * t i) < ∑ i ∈ s, g i * d i := by
+    apply Finset.sum_lt_sum
+    · intro i hi
+      rcases (hg i hi).lt_or_eq with h0 | h0
+      · have := hcon i hi h0; nlinarith
+      · rw [← h0]; simp
+    · obtain ⟨i, hi, hgi⟩ := hpos
+      exact ⟨i, hi, by have := hcon i hi hgi; nlinarith⟩
+  have heq : ∑ i ∈ s, g i * (c * t i) = c * ∑ i ∈ s, g i * t i := by
+    rw [Finset.mul_sum]; exact Finset.sum_congr rfl (fun i _ => by ring)
+  rw [heq] at hlt
+  linarith
 
-**Proof outline (Alon–Milman, to be formalized).** Apply the discrete coarea
-formula and Cauchy–Schwarz to `h := max f 0` (supported on `{f > 0}`, of size
-`≤ n/2`). The level cuts `T_t := {v : h v ≥ t}` for `t > 0` all have
-`|T_t| ≤ n/2`. Combining the factorization `|h_u² − h_v²| = |h_u − h_v|·(h_u + h_v)`
-(valid for non-negative `h`) with edge Cauchy–Schwarz, the eigenvalue equation
-`λ₂‖f‖² = ∑_e (f_u − f_v)²` and the degree bound
-`∑_e (f_u + f_v)² ≤ 2Δ‖f‖²` yields
-
-  `∑_k gap_k · |∂T_k|  ≤  √(2λ₂Δ) · ∑_k gap_k · |T_k|`,
-
-where the gaps and level cuts come from sorting `h` (equivalently `f` on its
-positive support). Pigeonhole picks a `k` with `|∂T_k|/|T_k| ≤ √(2λ₂Δ)`.
-
-**Formalization status.** This is the hard direction of Cheeger's inequality
-and is intentionally left as a single scoped `sorry` — the full Lean proof is
-estimated at several hundred lines and requires:
-(a) applying `discrete_coarea` to `h` using its own sorting permutation
-    (which coincides with `σ` on `supp h` since `h ≥ 0`);
-(b) a `Sym2`-lifted Cauchy–Schwarz on edge sums
-    (extending `boundary_cauchy_schwarz` from boundary to full `edgeFinset`);
-(c) a `(h_u + h_v)²`-type degree bound paralleling `edge_degree_bound`;
-(d) extraction of a non-empty complement for the chosen sweep cut (uses
-    `hfsum = 0` and `hf ≠ 0` to force both sign supports non-empty).
-The pointwise inequalities `sq_sub_max_zero_le` and `sq_sub_signsplit_le`
-above will provide the Laplacian monotonicity pieces for (b). -/
 lemma sweep_pigeonhole_aux
-    (_hconn : G.Connected) (hV : Fintype.card V ≥ 2)
-    (f : V → ℝ) (_hf : f ≠ 0) (_hfsum : ∑ v : V, f v = 0)
-    (_hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f)
-    (_hposSmall : (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤
+    (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
+    (f : V → ℝ) (hf : f ≠ 0) (hfsum : ∑ v : V, f v = 0)
+    (hfeig : (G.lapMatrix ℝ).mulVec f = algebraicConnectivity G hV • f)
+    (hposSmall : (Finset.univ.filter fun w : V => (0:ℝ) < f w).card ≤
         Fintype.card V / 2) :
     ∃ (S : Finset V), S.Nonempty ∧ Sᶜ.Nonempty ∧
       S.card ≤ Fintype.card V / 2 ∧
       ((edgeBoundary G S).card : ℝ) / ↑S.card ≤
         Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree) := by
-  -- TODO(Cheeger Alon–Milman): finish the h² Cauchy–Schwarz + pigeonhole
-  -- chain using `discrete_coarea`, `edge_degree_bound`,
-  -- `sq_sub_max_zero_le`, `sq_sub_signsplit_le`, and `boundary_cauchy_schwarz`.
-  -- See docstring for the full proof outline.
-  sorry
+  classical
+  have hnn : ∀ v, (0:ℝ) ≤ max (f v) 0 := fun v => le_max_right _ _
+  obtain ⟨σ, hσ⟩ := exists_sort_equiv (fun v => max (f v) 0)
+  have hσsq : ∀ i j : Fin (Fintype.card V), i ≤ j →
+      (max (f (σ i)) 0) ^ 2 ≤ (max (f (σ j)) 0) ^ 2 :=
+    sq_sorted_of_nonneg (fun v => max (f v) 0) hnn σ hσ
+  have hex_nonpos : ∃ w, f w ≤ 0 := by
+    by_contra hc; push_neg at hc
+    have huniv : (Finset.univ.filter fun w : V => (0:ℝ) < f w) = Finset.univ := by
+      ext w; simp only [Finset.mem_filter, Finset.mem_univ, true_and, iff_true]; exact hc w
+    rw [huniv, Finset.card_univ] at hposSmall; omega
+  have hmin0 : max (f (σ ⟨0, by omega⟩)) 0 = 0 := by
+    obtain ⟨w, hw⟩ := hex_nonpos
+    have hle : max (f (σ ⟨0, by omega⟩)) 0 ≤ max (f w) 0 := by
+      have := hσ ⟨0, by omega⟩ (σ.symm w) (Fin.le_def.mpr (Nat.zero_le _))
+      rwa [Equiv.apply_symm_apply] at this
+    have hw0 : max (f w) 0 = 0 := max_eq_right hw
+    linarith [hnn (σ ⟨0, by omega⟩)]
+  have hmin0sq : (max (f (σ ⟨0, by omega⟩)) 0) ^ 2 = 0 := by rw [hmin0]; ring
+  have hex_pos : ∃ v, 0 < f v := by
+    by_contra hc; push_neg at hc
+    exact hf (funext fun v =>
+      (Finset.sum_eq_zero_iff_of_nonpos (fun w _ => hc w)).mp hfsum v (Finset.mem_univ v))
+  have hHpos : 0 < ∑ v : V, (max (f v) 0) ^ 2 := by
+    obtain ⟨v, hv⟩ := hex_pos
+    refine Finset.sum_pos' (fun w _ => sq_nonneg _) ⟨v, Finset.mem_univ v, ?_⟩
+    have : 0 < max (f v) 0 := lt_max_of_lt_left hv
+    positivity
+  have hcoarea := coarea_sq G (fun v => max (f v) 0) hnn σ hσ hV
+  have hlayer := layer_cake_sum (fun v => (max (f v) 0) ^ 2) σ hσsq hV
+  have hnum := sweep_numerator_bound G f hconn hV hfeig
+  set gap : Fin (Fintype.card V - 1) → ℝ :=
+    fun k => (max (f (σ ⟨k.val + 1, by omega⟩)) 0) ^ 2
+              - (max (f (σ ⟨k.val, by omega⟩)) 0) ^ 2 with hgap
+  set Tset : Fin (Fintype.card V - 1) → Finset V :=
+    fun k => Finset.univ.filter fun w =>
+      (max (f w) 0) ^ 2 ≥ (max (f (σ ⟨k.val + 1, by omega⟩)) 0) ^ 2 with hTset
+  have hHeq : ∑ v : V, (max (f v) 0) ^ 2 = ∑ k, gap k * ((Tset k).card : ℝ) := by
+    rw [hlayer, hmin0sq]; ring
+  have hmaster : ∑ k, gap k * ((edgeBoundary G (Tset k)).card : ℝ)
+      ≤ Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree)
+          * ∑ k, gap k * ((Tset k).card : ℝ) := by
+    calc ∑ k, gap k * ((edgeBoundary G (Tset k)).card : ℝ)
+        = ∑ e ∈ G.edgeFinset,
+            Sym2.lift ⟨fun u v => |(max (f u) 0) ^ 2 - (max (f v) 0) ^ 2|,
+              fun u v => by simp only [abs_sub_comm]⟩ e := hcoarea.symm
+      _ ≤ Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree)
+            * ∑ v : V, (max (f v) 0) ^ 2 := hnum
+      _ = Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree)
+            * ∑ k, gap k * ((Tset k).card : ℝ) := by rw [hHeq]
+  have hgap_nn : ∀ k ∈ (Finset.univ : Finset (Fin (Fintype.card V - 1))), 0 ≤ gap k := by
+    intro k _; rw [hgap]
+    exact sub_nonneg.mpr (hσsq ⟨k.val, by omega⟩ ⟨k.val + 1, by omega⟩
+      (Fin.mk_le_mk.mpr (by omega)))
+  have hgap_pos : ∃ k ∈ (Finset.univ : Finset (Fin (Fintype.card V - 1))), 0 < gap k := by
+    by_contra hc; push_neg at hc
+    have : ∑ k, gap k * ((Tset k).card : ℝ) = 0 := by
+      apply Finset.sum_eq_zero; intro k hk
+      have hz := le_antisymm (hc k hk) (hgap_nn k hk); rw [hz, zero_mul]
+    rw [← hHeq] at this; exact absurd this (ne_of_gt hHpos)
+  obtain ⟨k, -, hkpos, hkratio⟩ := exists_pos_ratio Finset.univ gap
+    (fun k => ((edgeBoundary G (Tset k)).card : ℝ)) (fun k => ((Tset k).card : ℝ))
+    (Real.sqrt (2 * algebraicConnectivity G hV * ↑G.maxDegree)) hgap_nn hgap_pos hmaster
+  have hkp1pos : 0 < max (f (σ ⟨k.val + 1, by omega⟩)) 0 := by
+    have h2 : 0 < (max (f (σ ⟨k.val + 1, by omega⟩)) 0) ^ 2 := by
+      have := hkpos; rw [hgap] at this
+      nlinarith [sq_nonneg (max (f (σ ⟨k.val, by omega⟩)) 0)]
+    nlinarith [hnn (σ ⟨k.val + 1, by omega⟩)]
+  have hmem : σ ⟨k.val + 1, by omega⟩ ∈ Tset k := by
+    rw [hTset]; simp only [Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le, le_refl]
+  have hSne : (Tset k).Nonempty := ⟨_, hmem⟩
+  have hScard_pos : 0 < (Tset k).card := Finset.card_pos.mpr hSne
+  refine ⟨Tset k, hSne, ?_, ?_, ?_⟩
+  · refine ⟨σ ⟨0, by omega⟩, ?_⟩
+    rw [Finset.mem_compl, hTset]
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le, not_le, hmin0sq]
+    positivity
+  · refine le_trans (Finset.card_le_card ?_)
+      (pos_part_level_small f (max (f (σ ⟨k.val + 1, by omega⟩)) 0) hkp1pos hposSmall)
+    intro w hw
+    rw [hTset, Finset.mem_filter] at hw
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    have ha := hnn (σ ⟨k.val + 1, by omega⟩); have hb := hnn w
+    rw [← Real.sqrt_sq ha, ← Real.sqrt_sq hb]
+    exact Real.sqrt_le_sqrt hw.2
+  · rw [div_le_iff₀ (by exact_mod_cast hScard_pos)]
+    exact hkratio
 
 /-- **Sub-lemma 5**: Pigeonhole — ∃ good threshold. -/
 lemma sweep_pigeonhole
