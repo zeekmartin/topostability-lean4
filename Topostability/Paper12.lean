@@ -959,6 +959,92 @@ lemma coarea_sq (h : V → ℝ) (hnn : ∀ v, 0 ≤ h v)
   exact discrete_coarea G (fun v => (h v) ^ 2) σ
     (sq_sorted_of_nonneg h hnn σ hσ) hV
 
+/-- **Step 8** — discrete layer-cake (co-area for the vertex sum): for a sorted
+weight `g` (`σ` lists `g` ascending),
+`∑_v g v = N·g(σ₀) + ∑_k (g(σ_{k+1}) − g(σ_k))·|{w : g w ≥ g(σ_{k+1})}|`.
+Proved by double counting: write each `|T_k|` as `∑_w [g(σ_{k+1}) ≤ g w]`, swap
+the sums, and telescope per vertex (the index/value indicators agree because the
+gap vanishes on ties). -/
+lemma layer_cake_sum (g : V → ℝ) (σ : Fin (Fintype.card V) ≃ V)
+    (hσ : ∀ i j, i ≤ j → g (σ i) ≤ g (σ j)) (hV : Fintype.card V ≥ 2) :
+    ∑ v : V, g v =
+      (Fintype.card V : ℝ) * g (σ ⟨0, by omega⟩) +
+      ∑ k : Fin (Fintype.card V - 1),
+        (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+        ((Finset.univ.filter fun w => g w ≥ g (σ ⟨k.val + 1, by omega⟩)).card : ℝ) := by
+  classical
+  set s : ℕ → ℝ := fun k => if hk : k < Fintype.card V then g (σ ⟨k, hk⟩) else 0
+    with hs_def
+  have hsk : ∀ (k : ℕ) (hk : k < Fintype.card V), s k = g (σ ⟨k, hk⟩) := by
+    intro k hk; simp only [hs_def, dif_pos hk]
+  -- (1) card → indicator sum
+  have hcard : ∀ k : Fin (Fintype.card V - 1),
+      ((Finset.univ.filter fun w => g w ≥ g (σ ⟨k.val + 1, by omega⟩)).card : ℝ)
+      = ∑ w : V, (if g (σ ⟨k.val + 1, by omega⟩) ≤ g w then (1:ℝ) else 0) := by
+    intro k
+    rw [Finset.card_filter, Nat.cast_sum]
+    apply Finset.sum_congr rfl; intro w _
+    simp only [ge_iff_le, Nat.cast_ite, Nat.cast_one, Nat.cast_zero]
+  -- (2) per-vertex telescoping identity
+  have hper : ∀ w : V,
+      ∑ k : Fin (Fintype.card V - 1),
+        (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+          (if g (σ ⟨k.val + 1, by omega⟩) ≤ g w then (1:ℝ) else 0)
+        = g w - g (σ ⟨0, by omega⟩) := by
+    intro w
+    have hjw_lt : (σ.symm w).val < Fintype.card V := (σ.symm w).isLt
+    set jw := (σ.symm w).val with hjw
+    have hgw : g w = g (σ ⟨jw, hjw_lt⟩) := by
+      have hfin : (⟨jw, hjw_lt⟩ : Fin (Fintype.card V)) = σ.symm w := by apply Fin.ext; rfl
+      rw [hfin, Equiv.apply_symm_apply]
+    rw [hgw]
+    have hterm : ∀ k : Fin (Fintype.card V - 1),
+        (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+          (if g (σ ⟨k.val + 1, by omega⟩) ≤ g (σ ⟨jw, hjw_lt⟩) then (1:ℝ) else 0)
+        = (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+          (if k.val + 1 ≤ jw then (1:ℝ) else 0) := by
+      intro k
+      by_cases hidx : k.val + 1 ≤ jw
+      · have hle : g (σ ⟨k.val + 1, by omega⟩) ≤ g (σ ⟨jw, hjw_lt⟩) :=
+          hσ ⟨k.val + 1, by omega⟩ ⟨jw, hjw_lt⟩ (Fin.mk_le_mk.mpr (by omega))
+        rw [if_pos hidx, if_pos hle]
+      · push_neg at hidx
+        by_cases hval : g (σ ⟨k.val + 1, by omega⟩) ≤ g (σ ⟨jw, hjw_lt⟩)
+        · have hk_ge : g (σ ⟨jw, hjw_lt⟩) ≤ g (σ ⟨k.val, by omega⟩) :=
+            hσ ⟨jw, hjw_lt⟩ ⟨k.val, by omega⟩ (Fin.mk_le_mk.mpr (by omega))
+          have hk_le : g (σ ⟨k.val, by omega⟩) ≤ g (σ ⟨k.val + 1, by omega⟩) :=
+            hσ ⟨k.val, by omega⟩ ⟨k.val + 1, by omega⟩ (Fin.mk_le_mk.mpr (by omega))
+          have hgap0 : g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩) = 0 := by
+            linarith
+          rw [hgap0]; ring
+        · rw [if_neg hval, if_neg (show ¬ k.val + 1 ≤ jw by omega)]
+    rw [Finset.sum_congr rfl (fun k _ => hterm k)]
+    rw [Finset.sum_congr rfl (fun (k : Fin (Fintype.card V - 1)) _ =>
+      show (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+            (if k.val + 1 ≤ jw then (1:ℝ) else 0)
+         = (s (k.val + 1) - s k.val) * (if k.val + 1 ≤ jw then (1:ℝ) else 0)
+      from by rw [hsk (k.val + 1) (by omega), hsk k.val (by omega)])]
+    rw [Fin.sum_univ_eq_sum_range
+      (fun m => (s (m + 1) - s m) * (if m + 1 ≤ jw then (1:ℝ) else 0)) (Fintype.card V - 1)]
+    simp_rw [mul_ite, mul_one, mul_zero]
+    rw [← Finset.sum_filter]
+    have hfilter : (Finset.range (Fintype.card V - 1)).filter (fun m => m + 1 ≤ jw)
+        = Finset.range jw := by
+      ext m; simp only [Finset.mem_filter, Finset.mem_range]; omega
+    rw [hfilter, Finset.sum_range_sub s jw, hsk jw hjw_lt, hsk 0 (by omega)]
+  -- (3) assemble
+  have key :
+      ∑ k : Fin (Fintype.card V - 1),
+        (g (σ ⟨k.val + 1, by omega⟩) - g (σ ⟨k.val, by omega⟩)) *
+        ((Finset.univ.filter fun w => g w ≥ g (σ ⟨k.val + 1, by omega⟩)).card : ℝ)
+      = (∑ v : V, g v) - (Fintype.card V : ℝ) * g (σ ⟨0, by omega⟩) := by
+    rw [Finset.sum_congr rfl (fun k _ => by rw [hcard k])]
+    simp_rw [Finset.mul_sum]
+    rw [Finset.sum_comm]
+    rw [Finset.sum_congr rfl (fun w _ => hper w)]
+    rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
+  linarith [key]
+
 /-- **Sweep pigeonhole, small-positive-support case**: assuming the positive
 support `{v : f v > 0}` has size `≤ n/2`, there exists a low-expansion sweep
 cut. The general `sweep_pigeonhole` reduces to this via `pos_or_neg_small`.
