@@ -1,78 +1,93 @@
-# Plan — last `sorry`: `conjecture_tauG_le_algebraicConnectivity`
+# Plan — prove the **corrected** conjecture: `τ(G)/(Δ−1) ≤ λ₂(G)`
 
-**Target.** `Topostability/Paper11.lean:19`
+## Status of the original conjecture (resolved)
+
+The original Paper 11 Conjecture 1, `τ(G) ≤ λ₂(G)`, is **FALSE** — refuted and
+documented in [`conjecture_tauG_le_lambda2_REFUTED.md`](conjecture_tauG_le_lambda2_REFUTED.md).
+It fails first at `n = 6` and by an unbounded margin for glued cliques
+`K_m ∪_s K_m` (`τ = m−2`, `λ₂ ≤ κ_v = s`). The `sorry` in
+`conjecture_tauG_le_algebraicConnectivity` was removed; the repo is now
+**100% sorry-free**. The only salvaged true fragment is the `τ = 0` sub-case
+(`tauG_le_algebraicConnectivity_of_tauG_eq_zero`).
+
+## New target
+
 ```
-theorem conjecture_tauG_le_algebraicConnectivity
-    (hconn : G.Connected) (hV : Fintype.card V ≥ 2) :
-    (tauG G : ℝ) ≤ algebraicConnectivity G hV
+τ(G) / (Δ − 1) ≤ λ₂(G)        equivalently        τ(G) ≤ (Δ − 1) · λ₂(G)
 ```
-where `tauG G = min over edges e of triCount` (= min common-neighbour count over
-edges), and `algebraicConnectivity G hV = λ₂` (second-smallest Laplacian eigenvalue).
+where `τ(G) = tauG G` (min common-neighbour count over edges), `Δ = G.maxDegree`,
+and `λ₂(G) = algebraicConnectivity G` (second-smallest Laplacian eigenvalue).
 
-## ⚠️ Reality check first (do this before any Lean)
+For `Δ = 1` (a single edge, `n = 2`) the statement is vacuous/degenerate; state it
+for `Δ ≥ 2` (automatic for any connected graph on `≥ 3` vertices).
 
-This is **Paper 11's "Conjecture 1"**. The name and framing suggest it may be an
-**open conjecture** in the paper, not a proved theorem. Step 0 of tomorrow:
-- Re-read Paper 11 (Zenodo) and check: is `tauG ≤ λ₂` *proved* there, or *stated as
-  a conjecture* with only partial/heuristic evidence?
-- If only conjectured → a full Lean proof is a research result; we should instead
-  prove the **special cases the paper actually establishes** (likely d-regular)
-  and keep the general statement as a documented `sorry` or restate it.
-- Sanity values (from `Verify.lean`): `tauG K₃=1`, `tauG K₄=2`, `tauG P₃=0`,
-  `tauG C₄=0`. λ₂: K_n = n, P₃ = 1, C₄ = 2. All satisfy `tauG ≤ λ₂`. Consistent,
-  no obvious counterexample — but consistency ≠ proof.
+## Evidence (why this is the right inequality)
 
-## What infrastructure already exists (Paper11, all sorry-free)
+From [`corrected_conjecture_search.md`](corrected_conjecture_search.md) — `counterexample_search.py::corrected_search()`
+tested 5 candidate normalisations over **107,240 connected graphs** (n = 4..7
+EXHAUSTIVE up to iso via `networkx.graph_atlas_g()`; n = 8 sampled, structured +
+random):
 
-- `spectral_identity`: `trace(L·A²) = Σᵢ dᵢ² − 6·totalTriangles G`.
-- `lambda2_upper_bound_regular` (d-regular, `0<d<n`):
-  `λ₂ ≤ (n·d² − 6T) / (d·(n−d))`.
-- `directed_triangle_fiber_card` (counting helper).
-- Mathlib spectral API: `isHermitian_lapMatrix`, `posSemidef_lapMatrix`,
-  eigenvalues, `lapMatrix_toLinearMap₂'`; plus the whole Paper12 sweep machinery.
+| Candidate | Result |
+|-----------|--------|
+| `τ/Δ ≤ λ₂` | holds on all (binding ratio 0.57) |
+| **`τ/(Δ−1) ≤ λ₂`** | **holds on all (binding ratio 0.76) — tightest clean variant** |
+| `τ·δ/Δ ≤ λ₂` | FALSE (10 irregular violations) |
+| `τ ≤ λ₂·n/2` | holds, loose (0.57) |
+| `2(τ+1)²/(n²Δ³) ≤ λ₂` (Paper 12) | holds, very loose (0.03) |
 
-## Candidate routes (in increasing difficulty)
+Pearson `r(τ/Δ, λ₂) = 0.93`, Spearman `ρ = 0.89`. The binding graph is `n = 8,
+τ = 1, Δ = 4, λ₂ ≈ 0.438` (edges in the search writeup). **Caveat:** n ≤ 7 is
+exhaustive, n = 8 sampled, n ≥ 9 untested — this is a conjecture, not a theorem.
 
-### Route A — d-regular case via the existing upper bound (most tractable)
-The cleanest first milestone: prove `tauG ≤ λ₂` **for d-regular graphs** and a
-clean triangle bound, reusing `lambda2_upper_bound_regular`.
-- Hmm: `lambda2_upper_bound_regular` is an UPPER bound on λ₂, but we need a LOWER
-  bound on λ₂ to conclude `tauG ≤ λ₂`. So this lemma alone is the **wrong
-  direction** — it bounds λ₂ from above, not below. ⇒ Route A as stated does NOT
-  close the conjecture; it would need a separate λ₂ lower bound.
+Structural sanity on the refutation family: for `K_m ∪_s K_m`, `τ = m−2`,
+`Δ = 2m−s−1`, `λ₂ = s`, so `τ/(Δ−1) = (m−2)/(2m−s−2) < 1 ≤ s` — comfortably holds.
 
-### Route B — Rayleigh lower bound on λ₂ (the real engine)
-`λ₂ = min_{x ⟂ 1, x≠0} (xᵀ L x)/(xᵀx)`. To prove `λ₂ ≥ tauG` we need: for the
-minimizing/Fiedler `x`, `xᵀ L x ≥ tauG · xᵀx`, i.e. a Rayleigh lower bound driven
-by the per-edge common-neighbour count. Sub-tasks:
-1. A Mathlib bridge `λ₂ = ⨅ Rayleigh over ⟂1` (or `algebraicConnectivity_le_rayleigh`
-   already used in Paper13 — check its exact form; it gives λ₂ ≤ Rayleigh, again
-   the wrong direction for a lower bound on λ₂).
-2. The hard combinatorial core: relate `xᵀ L x = Σ_e (x_u−x_v)²` to triangle/
-   common-neighbour structure so that `tauG` appears as a lower factor. This is
-   the genuinely novel mathematical content and is **not** obviously in the repo.
+The trivial structural half is already true: **`τ(G) ≤ Δ − 1`** always (the common
+neighbours of an edge `(u,v)` are ⊆ `N(u) \ {v}`, so `≤ deg(u) − 1 ≤ Δ − 1`).
+Hence `τ/(Δ−1) ≤ 1`, and the whole content is the spectral lower bound
+`λ₂ ≥ τ/(Δ−1)`, i.e. **`λ₂` is bounded below by the normalised min triangle-degree.**
 
-### Route C — special graphs only (safe partial win)
-Prove the conjecture for concrete families to de-risk and document:
-- Complete graphs `K_n`: `tauG = n−2`, `λ₂ = n` ⇒ `n−2 ≤ n` (easy once λ₂(K_n)=n
-  is available — check Mathlib for `SimpleGraph.lapMatrix` eigenvalues of `⊤`).
-- Edge-empty / triangle-free graphs: `tauG = 0 ≤ λ₂` (just `λ₂ ≥ 0`, which is
-  `(posSemidef_lapMatrix).eigenvalues_nonneg`). **This is a 2-line lemma** and a
-  good warm-up; it already covers all bridgeless-but-triangle-free cases.
+## Proof route — Rayleigh / Cheeger lower bound on λ₂
 
-## Recommended order for tomorrow
-1. **Step 0**: confirm whether the paper proves it or conjectures it.
-2. **Quick win**: prove the `tauG = 0` sub-case (`λ₂ ≥ 0`) as a standalone lemma —
-   verifies the API path and covers triangle-free graphs.
-3. If the paper has a real proof: transcribe its argument (likely Route B with a
-   λ₂ lower bound the paper supplies). Identify the exact lower-bound lemma needed
-   and prove it as sub-lemmas, Modal-verified one at a time (same workflow as the
-   Cheeger proof).
-4. If it's genuinely open: prove the special cases (Route C), restate the top-level
-   theorem to the proved scope, and keep the general conjecture clearly marked.
+Goal restated: `λ₂(G) ≥ τ(G)/(Δ−1)`. Two candidate engines:
+
+### Route R — direct Rayleigh quotient
+`λ₂ = min_{x ⟂ 1, x ≠ 0} (xᵀ L x)/(xᵀ x)` with `xᵀ L x = Σ_{(u,v)∈E} (x_u − x_v)²`.
+Need: for every `x ⟂ 1`, `Σ_E (x_u − x_v)² ≥ (τ/(Δ−1)) · Σ_v x_v²`. The mechanism:
+each edge sits in ≥ τ triangles, and triangle/common-neighbour structure forces
+enough edge-variation. The `Δ−1` denominator should appear from bounding how many
+triangles share a vertex (each vertex is in ≤ `C(Δ,2)` triangles; per-edge it is
+`≤ Δ−1`). This is the genuinely novel analytic core.
+
+### Route C — via the existing discrete Cheeger machinery (Paper 12)
+Paper 12 already gives `λ₂ ≥ h(G)²/(2Δ)` (`cheeger_inequality`) and
+`h(G) ≥ 2(τ+1)/(nΔ)` (`conductance_lower_bound`). That chain yields only the very
+weak `2(τ+1)²/(n²Δ³) ≤ λ₂` (the n-dependence kills it). To reach `τ/(Δ−1)` one needs
+a **dimension-free** conductance bound `h(G) ≥ f(τ, Δ)` with no `n`, then Cheeger.
+Whether such an `h`-bound holds is itself open — check small cases first.
+
+Route R is more promising (no lossy `n` factor). Start there.
+
+## Recommended order
+
+1. **Lean scaffold.** State `theorem tauG_le_maxDegree_sub_one : τ(G) ≤ Δ − 1`
+   (easy, true, useful lemma) and the target
+   `theorem algebraicConnectivity_ge_tauG_div : (τ(G):ℝ)/(Δ−1) ≤ λ₂` as the goal.
+2. **Reuse Rayleigh API.** Paper 12 / Shared already have
+   `algebraicConnectivity_le_rayleigh` (λ₂ ≤ Rayleigh) and the edge-sum form of
+   `xᵀ L x` (`quadratic_form_eq_edge_sum`, `bilinear_edge_sum`). A LOWER bound on λ₂
+   needs the **Fiedler vector** characterisation (min over `x ⟂ 1`); locate or build
+   `algebraicConnectivity = ⨅ Rayleigh over ⟂1` (the ≥ direction).
+3. **Combinatorial core.** Prove `Σ_E (x_u−x_v)² ≥ (τ/(Δ−1)) Σ x²` for `x ⟂ 1`.
+   Develop as Modal-verified sub-lemmas, one at a time (same loop as the Cheeger
+   sweep proof). Expect this to be the bulk of the work.
+4. If Route R stalls, fall back to probing Route C numerically (does a dimension-free
+   `h(G) ≥ g(τ,Δ)` hold? extend `counterexample_search.py`).
 
 ## Workflow reminder
-Same Modal loop as the Cheeger proof: develop each sub-lemma in a scratch with
-`import Topostability.Paper11`, verify with `lean_check`, integrate, `build`,
-commit. API gotchas recorded in memory (`dotProduct_*` root namespace,
-`div_le_iff₀`, `Fin.mk_le_mk`, etc.).
+
+Modal loop, same as the Cheeger proof. **CLI unicode trap:** PowerShell 5.1 mangles
+`≤`/`≥` passed as `--code` to `modal run` → use the `check_file` function in
+`modal_lean.py` (`modal volume put <utf8 file> .../_scratch_modal.lean`, then
+`modal run modal_lean.py::check_file`). API gotchas recorded in repo memory.

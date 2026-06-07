@@ -9,8 +9,9 @@
 
 Formal verification in Lean 4 (Mathlib4) of spectral graph theory results
 from the Topostability research programme (Papers 11–13).
-All theorems are **sorry-free** and verified against standard Lean 4 axioms
-only (`propext`, `Classical.choice`, `Quot.sound`).
+The repository is **100% sorry-free (0 `sorry`s)** — every theorem is fully
+proved and verified against standard Lean 4 axioms only (`propext`,
+`Classical.choice`, `Quot.sound`).
 
 ## Files
 
@@ -22,7 +23,7 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 | `Verify.lean` | Computational verification on K3, K4, P3, C4 |
 | `Tests.lean` | Axiom checks and type-level sanity tests |
 
-## Proved Theorems (~35 total)
+## Proved Theorems (~37 total)
 
 ### Paper 12 — Lower bound via τ(G)
 | Lean name | Statement |
@@ -37,6 +38,8 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 |-----------|-----------|
 | `spectral_identity` | tr(L·A²) = Σdᵢ² − 6T |
 | `lambda2_upper_bound_regular` | λ₂(L) ≤ (nd² − 6T)/(d(n−d)) for d-regular G |
+| `algebraicConnectivity_nonneg` | 0 ≤ λ₂(L) (Laplacian is positive semidefinite) |
+| `tauG_le_algebraicConnectivity_of_tauG_eq_zero` | τ(G) = 0 → τ(G) ≤ λ₂ (salvaged true sub-case; see Refuted) |
 
 ### GAP #4 — Simplicial Identity (Level 2)
 | Lean name | Statement |
@@ -68,13 +71,26 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 
 ## Refuted
 
-- **`τ(G) ≤ λ₂(G)` (Paper 11, Conjecture 1) is FALSE.** Refuted by exhaustive +
-  structured search: it fails first at `n = 6`, and by an unbounded margin for glued
-  cliques `K_m ∪_s K_m` (`τ = m−2` but `λ₂ ≤ κ_v = s`). The salvaged true sub-case
-  (`τ = 0 ⇒ 0 ≤ λ₂`) is `tauG_le_algebraicConnectivity_of_tauG_eq_zero`. See
+- **`conjecture_tauG_le_algebraicConnectivity`: `τ(G) ≤ λ₂(G)` (Paper 11, Conjecture 1)
+  is FALSE.** Refuted by exhaustive + structured search: it fails first at `n = 6`, and
+  by an unbounded margin for glued cliques `K_m ∪_s K_m` (`τ = m−2` but `λ₂ ≤ κ_v = s`).
+  The false `sorry`-backed theorem was removed; the salvaged true sub-case
+  (`τ = 0 ⇒ 0 ≤ λ₂`) survives as `tauG_le_algebraicConnectivity_of_tauG_eq_zero`. See
   [`informal/conjecture_tauG_le_lambda2_REFUTED.md`](informal/conjecture_tauG_le_lambda2_REFUTED.md)
   and `counterexample_search.py`. (NB: `simplicial_to_spectral_bridge` below claims the
   same inequality via GAP #4 — that route cannot succeed either.)
+
+## Corrected Conjecture (open — proof pending)
+
+- **`τ(G)/(Δ−1) ≤ λ₂(G)`**, equivalently **`τ(G) ≤ (Δ−1)·λ₂(G)`** (Δ = max degree).
+  The degree-normalisation absorbs the local triangle-density that broke `τ ≤ λ₂`.
+  **Empirically validated on 107,240 connected graphs** (exhaustive up to isomorphism
+  for `n ≤ 7`, sampled for `n = 8`) with no counterexample; the looser `τ/Δ ≤ λ₂` also
+  holds. Since `τ(G) ≤ Δ−1` always, this is the tightest clean variant found.
+  Correlation `r(τ/Δ, λ₂) = 0.93`. A formal Lean proof is **pending** (plausible
+  Rayleigh/Cheeger route). See
+  [`informal/conjecture_tauG_le_lambda2_plan.md`](informal/conjecture_tauG_le_lambda2_plan.md)
+  and [`informal/corrected_conjecture_search.md`](informal/corrected_conjecture_search.md).
 
 ## Open Problems
 
