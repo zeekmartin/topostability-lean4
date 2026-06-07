@@ -11,12 +11,28 @@ namespace Topostability
 
 variable {V : Type*} [Fintype V] [DecidableEq V] (G : SimpleGraph V) [DecidableRel G.Adj]
 
+/-- The algebraic connectivity (second-smallest Laplacian eigenvalue) is nonnegative,
+because the graph Laplacian is positive semidefinite. -/
+lemma algebraicConnectivity_nonneg (hV : Fintype.card V ≥ 2) :
+    0 ≤ algebraicConnectivity G hV := by
+  unfold algebraicConnectivity
+  have h := (SimpleGraph.posSemidef_lapMatrix ℝ G).eigenvalues_nonneg
+    ((Fintype.equivOfCardEq (Fintype.card_fin _)) ⟨Fintype.card V - 2, by omega⟩)
+  convert h using 1
+  simp [Matrix.IsHermitian.eigenvalues]
+
 /-- **Conjecture 1** (Paper 11): For every connected graph `G` on at least 2 vertices,
 `tauG G ≤ algebraicConnectivity G`. -/
 theorem conjecture_tauG_le_algebraicConnectivity
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2) :
     (tauG G : ℝ) ≤ algebraicConnectivity G hV := by
-  sorry
+  rcases Nat.eq_zero_or_pos (tauG G) with h0 | hpos
+  · -- Sub-case `tauG G = 0`: the bound reduces to `0 ≤ λ₂`, which holds because
+    -- the Laplacian is positive semidefinite. Covers all triangle-free graphs.
+    rw [h0, Nat.cast_zero]
+    exact algebraicConnectivity_nonneg G hV
+  · -- Sub-case `tauG G ≥ 1`: the genuine spectral content of the conjecture.
+    sorry
 
 set_option maxHeartbeats 1600000 in
 private lemma directed_triangle_fiber_card (a b c : V)
