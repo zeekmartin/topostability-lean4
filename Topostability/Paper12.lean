@@ -1439,9 +1439,8 @@ in terms of `tauG`, the vertex count `n`, and the maximum degree `Δ`.
 When `tauG G ≥ k`, the bound gives a positive spectral gap, implying robust connectivity.
 See Zenodo DOI 10.5281/zenodo.18998928.
 
-*Proof*: Chains `cut_multiplication → conductance_lower_bound → cheeger_inequality`.
-Each step is stated above; the final arithmetic is `(2(k+1)/n)² / (2Δ) = 2(k+1)²/(n²Δ³)`.
-All three steps currently use `sorry` (see individual docstrings for blockage details). -/
+*Proof*: Chains `conductance_lower_bound → cheeger_inequality`; the final arithmetic is
+`(2(k+1)/n)² / (2Δ) = 2(k+1)²/(n²Δ³)`. Fully proved (sorry-free). -/
 theorem lambda2_lower_bound
     (hconn : G.Connected) (hV : Fintype.card V ≥ 2) (k : ℕ)
     (hk : tauG G ≥ k) :

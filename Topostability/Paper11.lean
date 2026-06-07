@@ -21,18 +21,30 @@ lemma algebraicConnectivity_nonneg (hV : Fintype.card V ≥ 2) :
   convert h using 1
   simp [Matrix.IsHermitian.eigenvalues]
 
-/-- **Conjecture 1** (Paper 11): For every connected graph `G` on at least 2 vertices,
-`tauG G ≤ algebraicConnectivity G`. -/
-theorem conjecture_tauG_le_algebraicConnectivity
-    (hconn : G.Connected) (hV : Fintype.card V ≥ 2) :
+/-! ### Paper 11, Conjecture 1 (`tauG ≤ λ₂`) is **FALSE**
+
+The proposed inequality `tauG G ≤ algebraicConnectivity G` does **not** hold in
+general. By exhaustive search it holds for `n ≤ 5` but fails first at `n = 6`, and
+it fails by an *unbounded* margin: for two copies of `K_m` glued along a shared
+clique of `s` vertices (`K_m ∪_s K_m`), every edge lies in a `K_m` so `tauG = m − 2`,
+while the `s` shared vertices form a vertex cut so `algebraicConnectivity ≤ κ_v = s`.
+Thus any `m > s + 2` is a counterexample; sharing a single edge (`s = 2`) and letting
+`m → ∞` gives `tauG − λ₂ → ∞`. The clean reason: `tauG` is a *local* density measure
+(triangles per edge), whereas `λ₂` is bounded by *global* connectivity.
+
+See `informal/conjecture_tauG_le_lambda2_REFUTED.md` and `counterexample_search.py`
+for the full writeup and the reproducible search. We retain below only the genuinely
+true content the conjecture does have. -/
+
+/-- **Salvaged true sub-case of (the refuted) Conjecture 1.** When `tauG G = 0`
+— in particular for every triangle-free graph — the bound `tauG G ≤ λ₂` reduces to
+`0 ≤ λ₂`, which holds because the Laplacian is positive semidefinite. The general
+statement `tauG ≤ λ₂` is **false** (see the note above). -/
+theorem tauG_le_algebraicConnectivity_of_tauG_eq_zero
+    (hV : Fintype.card V ≥ 2) (h0 : tauG G = 0) :
     (tauG G : ℝ) ≤ algebraicConnectivity G hV := by
-  rcases Nat.eq_zero_or_pos (tauG G) with h0 | hpos
-  · -- Sub-case `tauG G = 0`: the bound reduces to `0 ≤ λ₂`, which holds because
-    -- the Laplacian is positive semidefinite. Covers all triangle-free graphs.
-    rw [h0, Nat.cast_zero]
-    exact algebraicConnectivity_nonneg G hV
-  · -- Sub-case `tauG G ≥ 1`: the genuine spectral content of the conjecture.
-    sorry
+  rw [h0, Nat.cast_zero]
+  exact algebraicConnectivity_nonneg G hV
 
 set_option maxHeartbeats 1600000 in
 private lemma directed_triangle_fiber_card (a b c : V)

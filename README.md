@@ -66,12 +66,21 @@ only (`propext`, `Classical.choice`, `Quot.sound`).
 | 14 | T(G) conjecture (general graphs) | [10.5281/zenodo.19018598](https://doi.org/10.5281/zenodo.19018598) | 📖 Open (regular case proved) |
 | GAP #4 | Simplicial identity: triCount = simplicial star | [10.5281/zenodo.19149901](https://doi.org/10.5281/zenodo.19149901) | ✅ Fully proved |
 
+## Refuted
+
+- **`τ(G) ≤ λ₂(G)` (Paper 11, Conjecture 1) is FALSE.** Refuted by exhaustive +
+  structured search: it fails first at `n = 6`, and by an unbounded margin for glued
+  cliques `K_m ∪_s K_m` (`τ = m−2` but `λ₂ ≤ κ_v = s`). The salvaged true sub-case
+  (`τ = 0 ⇒ 0 ≤ λ₂`) is `tauG_le_algebraicConnectivity_of_tauG_eq_zero`. See
+  [`informal/conjecture_tauG_le_lambda2_REFUTED.md`](informal/conjecture_tauG_le_lambda2_REFUTED.md)
+  and `counterexample_search.py`. (NB: `simplicial_to_spectral_bridge` below claims the
+  same inequality via GAP #4 — that route cannot succeed either.)
+
 ## Open Problems
 
-- `conjecture_tauG_le_algebraicConnectivity`: τ(G) ≤ λ₂(G) — open conjecture (Paper 11)
 - `sweep_pigeonhole`: technical lemma for Cheeger sweep argument
 - `lambda2_triangle_graph_le` (general case): λ₂(T(G)) ≤ λ₂(G) for non-regular graphs (Paper 14)
-- `simplicial_to_spectral_bridge`: τ(G) ≤ λ₂(G) as corollary of simplicial thickness (GAP #4 Level 3)
+- ~~`simplicial_to_spectral_bridge`: τ(G) ≤ λ₂(G)~~ — refuted (same false inequality as above)
 
 ## Axiom Verification
 
