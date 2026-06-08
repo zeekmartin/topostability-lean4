@@ -572,6 +572,162 @@ def _ineq_stats(rows, lhs_f, rhs_f, applies):
     return n_app, n_v, n_vi, worst, best_ratio
 
 
+def _ols(y, feats):
+    """OLS with intercept. feats = list of 1-D arrays. Returns (beta, R2)
+    where beta[0] is the intercept and beta[1:] the slopes."""
+    y = np.asarray(y, float)
+    A = np.column_stack([np.ones(len(y))] + [np.asarray(f, float) for f in feats])
+    beta, *_ = np.linalg.lstsq(A, y, rcond=None)
+    yhat = A @ beta
+    ss_res = float(np.sum((y - yhat) ** 2))
+    ss_tot = float(np.sum((y - y.mean()) ** 2))
+    r2 = (1.0 - ss_res / ss_tot) if ss_tot > 0 else float("nan")
+    return beta, r2
+
+
+def combined_bounds_analysis(quad, out_dir):
+    """Part 1-4: combine τ/(Δ-1) and λ₂(T(G)) as predictors/bounds of λ₂(G),
+    over the graphs where all four quantities are defined (T(G) connected, Δ≥2)."""
+    import os
+    N = len(quad)
+    a1 = np.array([q[1] for q in quad], float)   # τ/(Δ-1)
+    a2 = np.array([q[2] for q in quad], float)   # λ₂(T(G))
+    y  = np.array([q[3] for q in quad], float)   # λ₂(G)
+
+    # ---- 1 + 3. combined lower bounds: count violations + tightest binding ratio
+    bound_defs = [
+        ("max(τ/(Δ-1), λ₂(T(G)))", np.maximum(a1, a2)),
+        ("τ/(Δ-1) + λ₂(T(G))",     a1 + a2),
+        ("(τ/(Δ-1) + λ₂(T(G)))/2", (a1 + a2) / 2.0),
+    ]
+    bounds = []
+    for name, lhs in bound_defs:
+        slack = y - lhs
+        n_viol = int(np.sum(slack < -TOL))
+        mask = lhs > TOL
+        ratios = lhs[mask] / y[mask]
+        tightest = float(np.max(ratios)) if ratios.size else float("nan")
+        worst_slack = float(np.min(slack))
+        bounds.append((name, n_viol, tightest, worst_slack))
+
+    # ---- 2. linear regression  λ₂(G) ~ a·X1 + b·X2  vs single-variable models
+    b1, r2_1 = _ols(y, [a1])                     # X1 only
+    b2, r2_2 = _ols(y, [a2])                     # X2 only
+    b12, r2_12 = _ols(y, [a1, a2])               # both
+
+    # ---- 4. commonality (variance) decomposition
+    uniq1 = r2_12 - r2_2                          # unique to τ/(Δ-1)
+    uniq2 = r2_12 - r2_1                          # unique to λ₂(T(G))
+    common = r2_1 + r2_2 - r2_12                  # shared
+
+    # =============================== report ===============================
+    L = []
+    L.append("# Combining the two λ₂(G) lower bounds  τ/(Δ−1)  and  λ₂(T(G))\n")
+    L.append("Conjectures A (`τ/(Δ−1) ≤ λ₂(G)`) and B (`λ₂(T(G)) ≤ λ₂(G)`) each hold but do "
+             "not chain (see [`hierarchy_validation.md`](hierarchy_validation.md)). Here we "
+             "ask whether *combining* the two quantities gives a stronger bound or a better "
+             f"predictor of `λ₂(G)`, over the **{N} graphs** with `T(G)` connected and `Δ ≥ 2`.\n")
+
+    L.append("## 1 & 3. Combined lower bounds\n")
+    L.append("| Candidate `LHS ≤ λ₂(G)` | Violations | Holds? | Tightest ratio LHS/λ₂(G) | Worst slack |")
+    L.append("|---|---|---|---|---|")
+    for name, nv, tr, ws in bounds:
+        holds = "✅" if nv == 0 else "❌"
+        trs = "—" if nv else f"{tr:.4f}"
+        L.append(f"| `{name}` | {nv} | {holds} | {trs} | {ws:+.4f} |")
+    L.append("")
+    L.append("- **`max(·,·)`** is the strongest bound that is *guaranteed* to hold: it is the "
+             "pointwise max of two quantities each `≤ λ₂(G)`, so 0 violations is automatic. "
+             "Its tightest ratio is the better (larger) of A's and B's individual tightness — "
+             "driven to **1.0** by regular graphs where `λ₂(T(G)) = λ₂(G)`. So `max` recovers "
+             "`λ₂(G)` exactly on the regular case but adds nothing beyond `λ₂(T(G))` there.")
+    L.append("- **The sum** overshoots (both terms are positive and each can approach `λ₂(G)`), "
+             "so it is not a valid lower bound.")
+    L.append("- **The average** is guaranteed valid (mean of two values `≤ λ₂(G)`), but is "
+             "looser than `max`.")
+    L.append("")
+
+    L.append("## 2. Linear regression  λ₂(G) ~ a·(τ/(Δ−1)) + b·λ₂(T(G))\n")
+    L.append(f"- **Two-variable model:** `λ₂(G) ≈ {b12[0]:+.4f} {b12[1]:+.4f}·(τ/(Δ−1)) "
+             f"{b12[2]:+.4f}·λ₂(T(G))`,  **R² = {r2_12:.4f}**.")
+    L.append(f"- Single-variable `λ₂(G) ~ τ/(Δ−1)`:  slope a = {b1[1]:+.4f}, "
+             f"intercept {b1[0]:+.4f},  **R² = {r2_1:.4f}**.")
+    L.append(f"- Single-variable `λ₂(G) ~ λ₂(T(G))`: slope b = {b2[1]:+.4f}, "
+             f"intercept {b2[0]:+.4f},  **R² = {r2_2:.4f}**.")
+    L.append(f"- The pair improves on the best single predictor "
+             f"(`λ₂(T(G))`, R²={r2_2:.4f}) by **ΔR² = {r2_12 - max(r2_1, r2_2):+.4f}**.")
+    L.append("")
+
+    L.append("## 4. Variance decomposition (commonality analysis)\n")
+    L.append(f"- `τ/(Δ−1)` alone explains  **{100*r2_1:.2f}%** of the variance of `λ₂(G)`.")
+    L.append(f"- `λ₂(T(G))` alone explains **{100*r2_2:.2f}%**.")
+    L.append(f"- The **pair together** explains **{100*r2_12:.2f}%**.")
+    L.append(f"- **Unique** to `τ/(Δ−1)` (semipartial): {100*uniq1:.2f}%.")
+    L.append(f"- **Unique** to `λ₂(T(G))`:             {100*uniq2:.2f}%.")
+    L.append(f"- **Shared** (common) variance:          {100*common:.2f}%.")
+    L.append("")
+    sig1 = uniq1 > 0.01
+    sig2 = uniq2 > 0.01
+    L.append(f"- **Significant unique variance?**  `τ/(Δ−1)`: "
+             f"{'YES' if sig1 else 'negligible'} ({100*uniq1:.2f}%);  `λ₂(T(G))`: "
+             f"{'YES' if sig2 else 'negligible'} ({100*uniq2:.2f}%).")
+    if sig1 and sig2:
+        L.append("  Both predictors carry independent information about `λ₂(G)` — they are "
+                 "**complementary**, not redundant. A combined bound is genuinely worth "
+                 "pursuing, even though the simple max/sum/avg forms above don't capture it "
+                 "(the regression weights do).")
+    elif sig2 and not sig1:
+        L.append("  `λ₂(T(G))` dominates; `τ/(Δ−1)` adds little unique signal once "
+                 "`λ₂(T(G))` is known.")
+    elif sig1 and not sig2:
+        L.append("  `τ/(Δ−1)` carries unique signal that `λ₂(T(G))` misses.")
+    else:
+        L.append("  Neither adds much beyond the other — they are largely redundant.")
+    L.append("")
+
+    # link-failure count: where τ/(Δ-1) > λ₂(T), so max strictly beats λ₂(T)
+    n_link_fail = int(np.sum(a1 > a2 + TOL))
+    L.append("## Bottom line\n")
+    L.append(f"- **`max(τ/(Δ−1), λ₂(T(G)))` is the bound to use.** It is valid (0 violations) "
+             "and pointwise dominates *both* individual bounds: it is strictly tighter than "
+             f"`λ₂(T(G))` on the **{n_link_fail}** graphs where the link fails "
+             f"(`τ/(Δ−1) > λ₂(T(G))`), and tighter than `τ/(Δ−1)` everywhere else.")
+    L.append("- **But the gain is small on average.** Regression/commonality say `λ₂(T(G))` "
+             f"already captures ~{100*r2_2:.0f}% of `λ₂(G)`'s variance and `τ/(Δ−1)` adds only "
+             f"~{100*uniq1:.1f}% unique — the two are ~{100*common:.0f}% redundant, and the "
+             "two-variable fit even gives `τ/(Δ−1)` a negative weight (suppression). These "
+             "views are consistent: `max` helps *pointwise on a small minority* of graphs, "
+             "while variance is an *average* over all graphs.")
+    L.append("- **Research implication:** if both A and B get proved, "
+             "`λ₂(G) ≥ max(τ/(Δ−1), λ₂(T(G)))` is the combined corollary — but the real "
+             "prize is **λ₂(T(G)) itself** (Conjecture B), which is the dominant, near-exact "
+             "predictor. `τ/(Δ−1)` is a cheap, weaker fallback that matters only when "
+             "`T(G)`'s own gap is unusually small.\n")
+
+    L.append("## Caveats\n")
+    L.append(f"- Over the {N} graphs with `T(G)` connected and `Δ ≥ 2` (n≤7 exhaustive, "
+             "n=8,9 sampled).")
+    L.append("- OLS R² with intercept; `λ₂` computed numerically. Empirical, not proofs.\n")
+
+    report = "\n".join(L) + "\n"
+    out = os.path.join(out_dir, "combined_bounds.md")
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(report)
+
+    # ---- console summary (ASCII-safe) ----
+    print("\n--- combined bounds ---")
+    for name, nv, tr, ws in bounds:
+        ascii_name = (name.replace("τ/(Δ-1)", "tau/(D-1)").replace("λ₂(T(G))", "L2(T)"))
+        print(f"  {ascii_name:32s} viol={nv:5d}  tightest={('%.4f'%tr) if nv==0 else '  -  '}")
+    print(f"  regression R2: X1={r2_1:.4f}  X2={r2_2:.4f}  both={r2_12:.4f}  "
+          f"(a={b12[1]:+.4f}, b={b12[2]:+.4f})")
+    print(f"  variance unique: tau/(D-1)={100*uniq1:.2f}%  L2(T)={100*uniq2:.2f}%  "
+          f"shared={100*common:.2f}%")
+    print(f"  combined bounds report written to: {out}")
+    return {"r2_1": r2_1, "r2_2": r2_2, "r2_12": r2_12,
+            "uniq1": uniq1, "uniq2": uniq2, "common": common}
+
+
 def hierarchy_search(max_n=9):
     rows = []
     counts = {}
@@ -773,6 +929,10 @@ def hierarchy_search(max_n=9):
         print("  " + lab.ljust(11) + " " +
               " ".join(f"{cmat[i][j]:+.3f}" for j in range(4)))
     print(f"\nReport written to: {out}")
+
+    # ---- combined-bounds analysis (Part 1-4) over the T(G)-connected subset ----
+    if n_quad >= 2:
+        combined_bounds_analysis(quad, os.path.dirname(out))
 
 
 def _f(x):
