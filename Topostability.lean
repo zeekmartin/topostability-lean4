@@ -3,6 +3,7 @@ import Topostability.Shared
 import Topostability.Paper11
 import Topostability.Paper12
 import Topostability.Paper13
+import Topostability.Paper14
 import Topostability.SimplicialIdentity
 import Topostability.Verify
 import Topostability.Tests
