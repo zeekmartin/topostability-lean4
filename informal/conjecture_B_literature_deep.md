@@ -35,9 +35,17 @@ the two halves of the Hodge 1-Laplacian, living on orthogonal Hodge subspaces
 (`im B₂` vs `im B₁ᵀ`).
 
 ### Numerical check of the *signed* Hodge form
+> **⚠ CORRECTION (see [`conjecture_B_hodge_test.md`](conjecture_B_hodge_test.md)).**
+> The claim below — that the signed form `λ_min⁺(L₁^up) ≤ λ₂(G)` "holds and is
+> tighter" — was based on only ~8 graphs and is **WRONG**. Comprehensive testing
+> (74,770 objects) shows the signed Hodge up-vs-down conjecture is **FALSE**:
+> 21% violations overall, and 1.0% even on the 45,196 `T(G)`-connected graphs where
+> combinatorial B holds (0 violations), with `r` up to 21×. The signed version is
+> *not* a valid tightening; Conjecture B is intrinsically the **unsigned**
+> combinatorial statement. (The small sample below happened to all satisfy `r≤1`.)
+
 Computing `λ_min⁺(L₁^up = B₂B₂ᵀ)` vs `λ₂(G)` (signed Hodge) and vs `λ₂(T(G))`
-(unsigned), the **signed Hodge form `λ_min⁺(L₁^up) ≤ λ₂(G)` holds**, and is
-**tighter** than the combinatorial `λ₂(T(G)) ≤ λ₂(G)`:
+(unsigned), the small initial sample (since refuted) suggested:
 
 | graph | λ₂(G) | λ_min⁺(L₁^up) | λ₂(T(G)) |
 |---|---|---|---|
