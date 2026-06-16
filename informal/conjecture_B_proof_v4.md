@@ -52,6 +52,13 @@ vector is *flat at hubs*. A clean corollary, also universal:
 > **`fᵀDf ≤ d̄ = 2m/n`** (average degree) — holds **1734/1734**, ratio median 0.79,
 > `=1` only for regular graphs. The Fiedler degree-weighted norm sits *below
 > average* precisely because `f²` avoids high-degree vertices.
+>
+> **⚠ CORRECTION (see [`conjecture_B_three_projects.md`](conjecture_B_three_projects.md), Project 1).**
+> This inequality is **NOT a theorem** — aggressive stress-testing (2954 graphs)
+> found violations on Watts–Strogatz (max ratio 1.016) and adversarial
+> double-brooms (max **1.153**), and even 3/1310 triangle-rich graphs. It held
+> 1734/1734 above only because that set was dense `G(n,p)`. The hub-flatness
+> *correlation* below stands; the pointwise inequality `fᵀDf ≤ d̄` is withdrawn.
 
 This is exactly the anticorrelation the lock needs: in `W = Σ_v(d_v−δ)D_v⁺`, the
 weight `(d_v−δ)` is large only at hubs, where `D_v⁺` (gradient energy) is small.
