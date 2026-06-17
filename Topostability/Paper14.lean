@@ -273,4 +273,84 @@ theorem fiedler_gradient_hub_flatness_adj {f : V → ℝ} {lam : ℝ}
         + ((G.neighborFinset b).erase a \ (G.neighborFinset a).erase b).card := core
     _ ≤ _ := hcardle
 
+/-- **Cauchy–Schwarz core with local mass.** Like `signed_sum_diff_sq_le` but *retaining*
+the mass `Σ_{u∈s△t} f_u²` instead of bounding it by `‖f‖² = 1`:
+`(∑_s f − ∑_t f)² ≤ |s △ t| · Σ_{u∈s△t} f_u²`. No normalisation hypothesis needed. -/
+lemma signed_sum_diff_sq_le_mass {f : V → ℝ} (s t : Finset V) :
+    ((∑ u ∈ s, f u) - ∑ u ∈ t, f u) ^ 2
+      ≤ (((s \ t).card : ℝ) + (t \ s).card)
+        * ∑ u ∈ (s \ t) ∪ (t \ s), (f u) ^ 2 := by
+  set D := (s \ t) ∪ (t \ s) with hDdef
+  set p : V → ℝ := fun u => if u ∈ s then (1 : ℝ) else -1 with hp
+  have hdisj : Disjoint (s \ t) (t \ s) :=
+    Finset.disjoint_left.mpr fun x hx hx2 =>
+      (Finset.mem_sdiff.mp hx2).2 (Finset.mem_sdiff.mp hx).1
+  have hcs := Finset.sum_mul_sq_le_sq_mul_sq D p f
+  have hA : ∑ u ∈ D, p u * f u = (∑ u ∈ s, f u) - ∑ u ∈ t, f u := by
+    have hsplit : (∑ u ∈ s, f u) - ∑ u ∈ t, f u
+        = (∑ u ∈ s \ t, f u) - ∑ u ∈ t \ s, f u := by
+      rw [← Finset.sum_inter_add_sum_diff s t f, ← Finset.sum_inter_add_sum_diff t s f,
+          Finset.inter_comm t s]; ring
+    rw [hsplit, hDdef, Finset.sum_union hdisj, sub_eq_add_neg]
+    congr 1
+    · exact Finset.sum_congr rfl fun u hu => by
+        simp only [hp]; rw [if_pos (Finset.mem_sdiff.mp hu).1, one_mul]
+    · rw [eq_neg_iff_add_eq_zero, ← Finset.sum_add_distrib]
+      exact Finset.sum_eq_zero fun u hu => by
+        simp only [hp]; rw [if_neg (Finset.mem_sdiff.mp hu).2]; ring
+  have hB : ∑ u ∈ D, (p u) ^ 2 = (D.card : ℝ) := by
+    have h1 : ∀ u ∈ D, (p u) ^ 2 = (1 : ℝ) := fun u _ => by
+      simp only [hp]; split_ifs <;> norm_num
+    rw [Finset.sum_congr rfl h1, Finset.sum_const, nsmul_eq_mul, mul_one]
+  have hcard : (D.card : ℝ) = ((s \ t).card : ℝ) + ((t \ s).card : ℝ) := by
+    rw [hDdef, Finset.card_union_of_disjoint hdisj]; push_cast; ring
+  rw [hA, hB] at hcs
+  calc ((∑ u ∈ s, f u) - ∑ u ∈ t, f u) ^ 2
+      ≤ (D.card : ℝ) * ∑ u ∈ D, (f u) ^ 2 := hcs
+    _ = (((s \ t).card : ℝ) + ((t \ s).card : ℝ)) * ∑ u ∈ D, (f u) ^ 2 := by rw [hcard]
+
+/-- **Fiedler gradient hub-flatness (adjacent, sharp with local mass).** Strictly stronger
+than `fiedler_gradient_hub_flatness_adj`: for `a ~ b` with `d_a = d_b = d` and
+`d − λ + 1 ≠ 0`,
+`(f_a − f_b)² ≤ |excl(a,b)| · (Σ_{u∈excl(a,b)} f_u²) / (d − λ + 1)²`, where
+`excl(a,b) = (N(a)\(N(b)∪{b})) ∪ (N(b)\(N(a)∪{a}))` is the symmetric difference with
+`a,b` removed (`|excl| = d_a+d_b−2|N(a)∩N(b)|−2`). Retains the local Fiedler mass on `excl`
+rather than bounding it by `‖f‖² = 1`; on dense (high-`t`, flat-`f`) edges `excl` and its
+mass are tiny, so this is far tighter. Same proof as the `_adj` version via the
+mass-retaining core. -/
+theorem fiedler_gradient_hub_flatness_adj_sharp {f : V → ℝ} {lam : ℝ}
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) (a b : V)
+    (hab : G.Adj a b) (hdeg : G.degree a = G.degree b)
+    (hne : (G.degree a : ℝ) - lam + 1 ≠ 0) :
+    (f a - f b) ^ 2 ≤
+      ((((G.neighborFinset a).erase b \ (G.neighborFinset b).erase a).card : ℝ)
+        + ((G.neighborFinset b).erase a \ (G.neighborFinset a).erase b).card)
+      * (∑ u ∈ ((G.neighborFinset a).erase b \ (G.neighborFinset b).erase a)
+            ∪ ((G.neighborFinset b).erase a \ (G.neighborFinset a).erase b), (f u) ^ 2)
+      / ((G.degree a : ℝ) - lam + 1) ^ 2 := by
+  have hbNa : b ∈ G.neighborFinset a := (G.mem_neighborFinset a b).mpr hab
+  have haNb : a ∈ G.neighborFinset b := (G.mem_neighborFinset b a).mpr hab.symm
+  have ea : ∑ u ∈ (G.neighborFinset a).erase b, f u
+      = ((G.degree a : ℝ) - lam) * f a - f b := by
+    have h := Finset.sum_erase_add (G.neighborFinset a) f hbNa
+    rw [lapMatrix_eigen_neighbor_sum G heig a] at h; linarith [h]
+  have eb : ∑ u ∈ (G.neighborFinset b).erase a, f u
+      = ((G.degree b : ℝ) - lam) * f b - f a := by
+    have h := Finset.sum_erase_add (G.neighborFinset b) f haNb
+    rw [lapMatrix_eigen_neighbor_sum G heig b] at h; linarith [h]
+  have hdb : (G.degree b : ℝ) = (G.degree a : ℝ) := by exact_mod_cast hdeg.symm
+  have hid : (∑ u ∈ (G.neighborFinset a).erase b, f u)
+              - ∑ u ∈ (G.neighborFinset b).erase a, f u
+            = ((G.degree a : ℝ) - lam + 1) * (f a - f b) := by
+    rw [ea, eb, hdb]; ring
+  have core := signed_sum_diff_sq_le_mass (f := f) ((G.neighborFinset a).erase b)
+    ((G.neighborFinset b).erase a)
+  rw [hid, mul_pow] at core
+  have hpos : 0 < ((G.degree a : ℝ) - lam + 1) ^ 2 :=
+    lt_of_le_of_ne (sq_nonneg _) ((pow_ne_zero 2 hne).symm)
+  rw [le_div_iff₀ hpos]
+  calc (f a - f b) ^ 2 * ((G.degree a : ℝ) - lam + 1) ^ 2
+      = ((G.degree a : ℝ) - lam + 1) ^ 2 * (f a - f b) ^ 2 := by ring
+    _ ≤ _ := core
+
 end Topostability
