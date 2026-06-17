@@ -5,6 +5,7 @@ import Topostability.Paper12
 import Topostability.Paper13
 import Topostability.Paper14
 import Topostability.Paper15
+import Topostability.Paper16
 import Topostability.ConjectureB
 import Topostability.SimplicialIdentity
 import Topostability.Verify
