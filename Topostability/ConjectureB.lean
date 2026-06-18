@@ -149,6 +149,41 @@ lemma quadForm_adjSq_eq_normSq (f : V → ℝ) :
       show (G.adjMatrix ℝ).transpose = G.adjMatrix ℝ from G.transpose_adjMatrix]
   simp only [dotProduct, pow_two]
 
+/-- **Degree-assortativity edge identity (algebraic, symmetry only).** The diagonal
+`Σ_v(σ_v − d_v²)f_v²` (`σ_v = Σ_{c∼v}d_c`), written as `Σ_{i,j}[i∼j](d_j−d_i)f_i²`, equals the
+edge-antisymmetry `−½·Σ_{i,j}[i∼j](d_i−d_j)(f_i²−f_j²)`. This is the negative (high-degree hub)
+part of the diagonal `R_v` in the open-2-path reformulation of `aggregate_triangle_poincare`
+(`informal/conjecture_B_open2path_gap.md`): the hub negativity is an edge antisymmetry between
+degree and `f²`. No spectral hypothesis. -/
+lemma degAssort_edge_identity (f : V → ℝ) :
+    (∑ i : V, ∑ j : V, if G.Adj i j then ((G.degree j : ℝ) - G.degree i) * (f i) ^ 2 else 0)
+      = - (1 / 2) * ∑ i : V, ∑ j : V,
+          (if G.Adj i j then ((G.degree i : ℝ) - G.degree j) * ((f i) ^ 2 - (f j) ^ 2) else 0) := by
+  set A1 : V → V → ℝ :=
+    fun i j => if G.Adj i j then ((G.degree j : ℝ) - G.degree i) * (f i) ^ 2 else 0 with hA1
+  set A2 : V → V → ℝ :=
+    fun i j => if G.Adj i j then ((G.degree i : ℝ) - G.degree j) * ((f i) ^ 2 - (f j) ^ 2) else 0
+    with hA2
+  have hpt : ∀ i j : V, A1 i j + A1 j i = - A2 i j := by
+    intro i j; simp only [hA1, hA2]
+    by_cases h : G.Adj i j
+    · have h' : G.Adj j i := h.symm
+      rw [if_pos h, if_pos h', if_pos h]; ring
+    · have h' : ¬ G.Adj j i := fun x => h x.symm
+      rw [if_neg h, if_neg h', if_neg h]; ring
+  have hswap : (∑ i : V, ∑ j : V, A1 i j) = ∑ i : V, ∑ j : V, A1 j i := Finset.sum_comm
+  have hsum : (∑ i : V, ∑ j : V, A1 i j) + (∑ i : V, ∑ j : V, A1 j i)
+      = ∑ i : V, ∑ j : V, - A2 i j := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun j _ => hpt i j
+  rw [← hswap] at hsum
+  have hneg : (∑ i : V, ∑ j : V, - A2 i j) = - ∑ i : V, ∑ j : V, A2 i j := by
+    simp only [Finset.sum_neg_distrib]
+  rw [hneg] at hsum
+  linarith [hsum]
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
