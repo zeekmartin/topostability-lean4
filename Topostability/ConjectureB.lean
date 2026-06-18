@@ -45,6 +45,74 @@ def degQuad (f : V → ℝ) : ℝ := ∑ v : V, (G.degree v : ℝ) * (f v) ^ 2
 /-- `S = Σ_v d_v · f_v`. -/
 def degLin (f : V → ℝ) : ℝ := ∑ v : V, (G.degree v : ℝ) * f v
 
+/-- Triangle degree `τ_v = Σ_{u∼v} |N(v)∩N(u)|` (= twice the number of triangles through `v`).
+Appears as the diagonal weight in `triEnergy_diag_corr`. -/
+def triDeg (v : V) : ℝ := ∑ u : V, if G.Adj v u then (triCount G v u : ℝ) else 0
+
+/-- **Diagonal/correlation identity (algebraic — no spectral hypothesis).**
+
+`triEnergy = 2·Σ_v τ_v f_v² − 2·Σ_{i,j}[i∼j] t_ij f_i f_j`, obtained by expanding the square
+`(f_i−f_j)² = f_i²+f_j²−2f_i f_j` and collapsing the two diagonal terms by symmetry of
+`t_ij = |N(i)∩N(j)|`. This is the exact decomposition underlying the nodal analysis in
+`informal/conjecture_B_nodal_decomposition.md`: the second sum is the triangle correlation
+`C`, which splits globally into a same-sign reservoir minus the hard cross mass. -/
+lemma triEnergy_diag_corr (f : V → ℝ) :
+    triEnergy G f
+      = 2 * (∑ i : V, triDeg G i * (f i) ^ 2)
+        - 2 * (∑ i : V, ∑ j : V,
+            if G.Adj i j then (triCount G i j : ℝ) * (f i * f j) else 0) := by
+  simp only [triEnergy, triDeg, triCount]
+  set C : V → V → ℝ := fun i j => ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) with hC
+  have hCsymm : ∀ a b : V, C a b = C b a := by
+    intro a b; simp only [hC]; rw [Finset.inter_comm]
+  have hpull : ∀ i : V, (∑ j : V, if G.Adj i j then C i j * (f i) ^ 2 else 0)
+      = (∑ j : V, if G.Adj i j then C i j else 0) * (f i) ^ 2 := by
+    intro i; rw [Finset.sum_mul]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    by_cases h : G.Adj i j <;> simp [h]
+  have hsymm : (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f j) ^ 2 else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f i) ^ 2 else 0) := by
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+    by_cases h : G.Adj a b
+    · have hba : G.Adj b a := h.symm
+      rw [if_pos h, if_pos hba, hCsymm b a]
+    · have hba : ¬ G.Adj b a := fun x => h x.symm
+      rw [if_neg h, if_neg hba]
+  have hexp : ∀ i j : V,
+      (if G.Adj i j then C i j * (f i - f j) ^ 2 else 0)
+      = (if G.Adj i j then C i j * (f i) ^ 2 else 0)
+        + (if G.Adj i j then C i j * (f j) ^ 2 else 0)
+        - 2 * (if G.Adj i j then C i j * (f i * f j) else 0) := by
+    intro i j; by_cases h : G.Adj i j <;> simp [h] <;> ring
+  calc (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f i - f j) ^ 2 else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f i) ^ 2 else 0)
+          + (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f j) ^ 2 else 0)
+          - 2 * (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f i * f j) else 0) := by
+        simp_rw [hexp]
+        simp only [Finset.sum_sub_distrib, Finset.sum_add_distrib, ← Finset.mul_sum]
+    _ = 2 * (∑ i : V, (∑ j : V, if G.Adj i j then C i j else 0) * (f i) ^ 2)
+          - 2 * (∑ i : V, ∑ j : V, if G.Adj i j then C i j * (f i * f j) else 0) := by
+        rw [hsymm, ← Finset.sum_add_distrib]
+        simp_rw [hpull, ← two_mul]
+        rw [← Finset.mul_sum]
+
+/-- **Diagonal/correlation identity, surplus form.** For any scalar `lam`,
+`triEnergy − 2·lam·degQuad = 2·Σ_v (τ_v − lam·d_v) f_v² − 2·Σ_{i,j}[i∼j] t_ij f_i f_j`.
+The aggregate triangle-Poincaré `triEnergy ≤ 2·λ₂·degQuad` is therefore equivalent to
+`Σ_v(τ_v−λ₂d_v)f_v² ≤ Σ_{i,j}[i∼j] t_ij f_i f_j` (diagonal ≤ triangle correlation). -/
+lemma triEnergy_sub_two_lam_degQuad (f : V → ℝ) (lam : ℝ) :
+    triEnergy G f - 2 * lam * degQuad G f
+      = 2 * (∑ i : V, (triDeg G i - lam * (G.degree i : ℝ)) * (f i) ^ 2)
+        - 2 * (∑ i : V, ∑ j : V,
+            if G.Adj i j then (triCount G i j : ℝ) * (f i * f j) else 0) := by
+  rw [triEnergy_diag_corr, degQuad]
+  have step : (∑ i : V, (triDeg G i - lam * (G.degree i : ℝ)) * (f i) ^ 2)
+      = (∑ i : V, triDeg G i * (f i) ^ 2) - lam * (∑ v : V, (G.degree v : ℝ) * (f v) ^ 2) := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun i _ => by ring
+  rw [step]; ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
