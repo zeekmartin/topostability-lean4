@@ -149,6 +149,21 @@ lemma quadForm_adjSq_eq_normSq (f : V → ℝ) :
       show (G.adjMatrix ℝ).transpose = G.adjMatrix ℝ from G.transpose_adjMatrix]
   simp only [dotProduct, pow_two]
 
+/-- **Quadratic form of the eigen-equation (algebraic).** `fᵀAf = fᵀDf − lam·(f·f)` for any
+Laplacian eigenpair `(lam, f)` (`L f = lam • f`, `A = adjMatrix`, `D = degMatrix`). For a unit
+vector this is `fᵀAf = fᵀDf − lam`, the bridge `lam·fᵀAf = lam(fᵀDf − lam)` used to recast the
+open-2-path reformulation as `Open + 𝒜 ≥ lam·fᵀAf` (`informal/conjecture_B_hub_correction.md`). -/
+lemma quadForm_adjMatrix_fiedler (f : V → ℝ) (lam : ℝ)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
+    dotProduct f ((G.adjMatrix ℝ).mulVec f)
+      = dotProduct f ((G.degMatrix ℝ).mulVec f) - lam * dotProduct f f := by
+  rw [adjMatrix_mulVec_fiedler G f lam heig]
+  simp only [dotProduct]
+  rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun v _ => ?_
+  simp only [Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
+  ring
+
 /-- **Degree-assortativity edge identity (algebraic, symmetry only).** The diagonal
 `Σ_v(σ_v − d_v²)f_v²` (`σ_v = Σ_{c∼v}d_c`), written as `Σ_{i,j}[i∼j](d_j−d_i)f_i²`, equals the
 edge-antisymmetry `−½·Σ_{i,j}[i∼j](d_i−d_j)(f_i²−f_j²)`. This is the negative (high-degree hub)
