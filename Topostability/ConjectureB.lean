@@ -113,6 +113,25 @@ lemma triEnergy_sub_two_lam_degQuad (f : V → ℝ) (lam : ℝ) :
     exact Finset.sum_congr rfl fun i _ => by ring
   rw [step]; ring
 
+/-- **Triangle-level row equation (algebraic).** For any Laplacian eigenpair `(lam, f)`
+(`L f = lam • f`), the adjacency square satisfies `A² f = A·(D f) − lam·(D f − lam·f)`, where
+`A = adjMatrix`, `D = degMatrix`, `L = D − A`. Since `(A²)_{vu} = |N(v)∩N(u)|`, this is the
+eigen-equation `A f = (D − lam) f` lifted to the triangle level — the exact identity behind the
+domain-local triangle analysis (`informal/conjecture_B_domain_triangle_perron.md`). The triangle
+*energy* uses the Hadamard weight `A∘A²` rather than `A²` itself, so this recursion bridges to
+triangles only up to the 2-path (non-adjacent common-neighbour) terms. -/
+lemma adjSq_mulVec_fiedler (f : V → ℝ) (lam : ℝ)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
+    ((G.adjMatrix ℝ) ^ 2).mulVec f
+      = (G.adjMatrix ℝ).mulVec ((G.degMatrix ℝ).mulVec f)
+        - lam • ((G.degMatrix ℝ).mulVec f - lam • f) := by
+  have hLDA : G.lapMatrix ℝ = G.degMatrix ℝ - G.adjMatrix ℝ := rfl
+  rw [hLDA, Matrix.sub_mulVec] at heig
+  have hA : (G.adjMatrix ℝ).mulVec f = (G.degMatrix ℝ).mulVec f - lam • f := by
+    rw [← heig]; abel
+  rw [pow_two, ← Matrix.mulVec_mulVec, hA,
+      Matrix.mulVec_sub, Matrix.mulVec_smul, hA]
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
