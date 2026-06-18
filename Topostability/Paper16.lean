@@ -163,4 +163,55 @@ lemma lapQuadForm_edge_split (g : V → ℝ) (B : Finset V) (hsupp : ∀ v, v �
   rw [SimpleGraph.lapMatrix_toLinearMap₂', quadform_edge_split G g B hsupp]
   ring
 
+/-- **Block Fiedler eigenvalue identification.**
+If `g` (extended by `0` off `B`) is, on `B`, an eigenvector of the induced Laplacian
+`L_{G[B]}` with eigenvalue `lamB` — stated in row form
+`∀ i, Σ_{j: i~j, i,j∈B}(g i − g j) = lamB·g i` (this is `(L_{G[B]} g)_i = lamB·g_i`) — then the
+within-`B` Dirichlet (block) energy equals `2·lamB·‖g‖²`:
+`Σ_{i,j∈B, i~j}(g_i−g_j)² = 2·lamB·Σ_v g_v²`. So in `lapQuadForm_edge_split` the block energy
+`blockEnergy/2 = lamB·‖g‖²` is exactly `λ₂(G[B])·‖g‖²` when `lamB = λ₂(G[B])` and `g` its
+Fiedler. Pure summation-by-parts: expand the square, use the symmetry of the within-`B`
+predicate, and substitute the row eigen-equation. -/
+lemma block_fiedler_energy (g : V → ℝ) (B : Finset V) (lamB : ℝ)
+    (hrow : ∀ i, (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i - g j else 0) = lamB * g i) :
+    (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (g i - g j) ^ 2 else 0)
+      = 2 * lamB * (∑ v : V, g v ^ 2) := by
+  -- expand the square into S1 − 2·S2 + S3
+  have hexp : (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (g i - g j) ^ 2 else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i ^ 2 else 0)
+        - 2 * (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i * g j else 0)
+        + (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g j ^ 2 else 0) := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    split_ifs <;> ring
+  -- symmetry of the within-B predicate: S3 = S1
+  have hsymm : (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g j ^ 2 else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i ^ 2 else 0) := by
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => ?_
+    by_cases h : G.Adj i j ∧ i ∈ B ∧ j ∈ B
+    · rw [if_pos h, if_pos ⟨h.1.symm, h.2.2, h.2.1⟩]
+    · rw [if_neg h, if_neg (fun hh => h ⟨hh.1.symm, hh.2.2, hh.2.1⟩)]
+  -- S2 = S1 − lamB·‖g‖²  (row eigen-equation, factored per i)
+  have hS2 : (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i * g j else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i ^ 2 else 0)
+        - lamB * (∑ v : V, g v ^ 2) := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    have hC : (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i else 0)
+          - (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g j else 0) = lamB * g i := by
+      rw [← Finset.sum_sub_distrib, ← hrow i]
+      exact Finset.sum_congr rfl fun j _ => by split_ifs <;> ring
+    have hLHS : (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i * g j else 0)
+        = g i * (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g j else 0) := by
+      rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun j _ => by split_ifs <;> ring
+    have hSi : (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i ^ 2 else 0)
+        = g i * (∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then g i else 0) := by
+      rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun j _ => by split_ifs <;> ring
+    rw [hLHS, hSi]
+    linear_combination (-(g i)) * hC
+  rw [hexp, hsymm, hS2]; ring
+
 end Topostability
