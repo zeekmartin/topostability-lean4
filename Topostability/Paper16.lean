@@ -125,4 +125,42 @@ lemma block_gap_lower (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
   have := block_gap G hconn hV g hg hsum blockEnergy boundaryEnergy hdecomp
   linarith
 
+/-- **Edge split of the Laplacian quadratic form (ordered double-sum form).**
+For `g` supported on `B` (`g v = 0` for `v ∉ B`), the ordered Dirichlet double sum splits into
+the within-`B` part and a boundary part. Key point: on every edge not fully inside `B`, at
+least one endpoint has `g = 0`, so there `g i · g j = 0` and `(g i − g j)² = g i² + g j²`. -/
+lemma quadform_edge_split (g : V → ℝ) (B : Finset V) (hsupp : ∀ v, v ∉ B → g v = 0) :
+    (∑ i : V, ∑ j : V, if G.Adj i j then (g i - g j) ^ 2 else 0)
+      = (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (g i - g j) ^ 2 else 0)
+        + (∑ i : V, ∑ j : V,
+            if G.Adj i j ∧ ¬ (i ∈ B ∧ j ∈ B) then g i ^ 2 + g j ^ 2 else 0) := by
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  by_cases hadj : G.Adj i j
+  · by_cases hB : i ∈ B ∧ j ∈ B
+    · rw [if_pos hadj, if_pos ⟨hadj, hB.1, hB.2⟩, if_neg (fun h => h.2 hB), add_zero]
+    · have hz : g i * g j = 0 := by
+        rcases not_and_or.mp hB with hi | hj
+        · rw [hsupp i hi]; ring
+        · rw [hsupp j hj]; ring
+      rw [if_pos hadj, if_neg (fun h => hB ⟨h.2.1, h.2.2⟩), if_pos ⟨hadj, hB⟩, zero_add]
+      nlinarith [hz]
+  · rw [if_neg hadj, if_neg (fun h => hadj h.1), if_neg (fun h => hadj h.1), add_zero]
+
+/-- **Bridge: the Laplacian quadratic form decomposes into block + boundary energies.**
+For `g` supported on `B`, `gᵀL_G g = blockEnergy + boundaryEnergy` with
+`blockEnergy = ½·Σ_{i,j∈B, i~j}(g_i−g_j)²` (the within-`B` Dirichlet form, equal to the
+Laplacian quadratic form of the induced subgraph `G[B]`) and
+`boundaryEnergy = ½·Σ_{i,j, i~j, ¬both∈B}(g_i²+g_j²)` (the `B`–`Bᶜ` cut). This supplies the
+`hdecomp` hypothesis of `block_gap`/`block_gap_lower` directly from the graph Laplacian. -/
+lemma lapQuadForm_edge_split (g : V → ℝ) (B : Finset V) (hsupp : ∀ v, v ∉ B → g v = 0) :
+    Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) g g
+      = (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (g i - g j) ^ 2 else 0) / 2
+        + (∑ i : V, ∑ j : V,
+            if G.Adj i j ∧ ¬ (i ∈ B ∧ j ∈ B) then g i ^ 2 + g j ^ 2 else 0) / 2 := by
+  rw [SimpleGraph.lapMatrix_toLinearMap₂', quadform_edge_split G g B hsupp]
+  ring
+
 end Topostability
