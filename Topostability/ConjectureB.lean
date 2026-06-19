@@ -475,6 +475,35 @@ lemma sum_sq_mul_card_sub_sq {ι : Type*} [Fintype ι] (x : ι → ℝ) :
   have h := lagrange_identity x (fun _ => (1 : ℝ))
   simpa using h
 
+/-- **Min-weight decomposition of the B2′ edge energy (algebraic, no spectral hypothesis).** Using
+`min(a,b) = (a+b)/2 − |a−b|/2`, the degree-min-weighted gradient energy `B2′ = Σ_e(min(d_a,d_b)−1)g²`
+splits into the degree-*average* Dirichlet energy minus the degree-*discrepancy* gradient energy minus
+the plain Dirichlet energy. This is the exact edge-variance form of B2′
+(`informal/conjecture_B_B2prime_proof.md`): combined with the eigen-equation it gives the slack
+decomposition `λ₂G − B2′ = R″ + C` (`R″ = λ₂(fᵀDf−λ₂+1−S²/m)`,
+`C = Σ_{edges, h higher-deg}(d_h−d_l)f_h(f_h−f_l)`), with the discrepancy term vanishing on regular
+graphs (the equality base case `aggregate_triangle_poincare_regular`). -/
+lemma B2prime_min_decomp (f : V → ℝ) :
+    (∑ i : V, ∑ j : V, if G.Adj i j then
+        (min (G.degree i : ℝ) (G.degree j) - 1) * (f i - f j) ^ 2 else 0)
+      = (1 / 2) * (∑ i : V, ∑ j : V, if G.Adj i j then
+            ((G.degree i : ℝ) + G.degree j) * (f i - f j) ^ 2 else 0)
+        - (1 / 2) * (∑ i : V, ∑ j : V, if G.Adj i j then
+            |(G.degree i : ℝ) - G.degree j| * (f i - f j) ^ 2 else 0)
+        - (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
+  have hmin : ∀ a b : ℝ, min a b = (a + b) / 2 - |a - b| / 2 := by
+    intro a b
+    rcases le_total a b with h | h
+    · rw [min_eq_left h, abs_of_nonpos (by linarith)]; ring
+    · rw [min_eq_right h, abs_of_nonneg (by linarith)]; ring
+  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_sub_distrib, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  by_cases h : G.Adj i j
+  · simp only [if_pos h]; rw [hmin]; ring
+  · simp only [if_neg h]; ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
