@@ -199,6 +199,82 @@ lemma degAssort_edge_identity (f : V → ℝ) :
   rw [hneg] at hsum
   linarith [hsum]
 
+/-- **Laplacian bilinear (Dirichlet) form (algebraic, no spectral hypothesis).** For any vectors
+`u, w`, `uᵀ L w = Σ_{i,j}[i∼j] u_i (w_i − w_j)`. The bilinear extension of the Dirichlet energy;
+specialised below at `u = d`, `w = f∘f` to identify the assortativity correction as a covariance. -/
+lemma lapMatrix_bilin (u w : V → ℝ) :
+    dotProduct u ((G.lapMatrix ℝ).mulVec w)
+      = ∑ i : V, ∑ j : V, if G.Adj i j then u i * (w i - w j) else 0 := by
+  have hrow : ∀ i : V, ((G.lapMatrix ℝ).mulVec w) i
+      = ∑ j : V, if G.Adj i j then (w i - w j) else 0 := by
+    intro i
+    have hLDA : G.lapMatrix ℝ = G.degMatrix ℝ - G.adjMatrix ℝ := rfl
+    rw [hLDA, Matrix.sub_mulVec, Pi.sub_apply]
+    rw [show (G.degMatrix ℝ).mulVec w i = (G.degree i : ℝ) * w i from by
+      simp [SimpleGraph.degMatrix, Matrix.mulVec_diagonal]]
+    rw [SimpleGraph.adjMatrix_mulVec_apply]
+    rw [show (∑ j : V, if G.Adj i j then (w i - w j) else 0)
+        = ∑ j ∈ G.neighborFinset i, (w i - w j) from by
+      rw [SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter]]
+    rw [Finset.sum_sub_distrib, Finset.sum_const, SimpleGraph.card_neighborFinset_eq_degree,
+        nsmul_eq_mul]
+  rw [dotProduct]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [hrow, Finset.mul_sum]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  by_cases h : G.Adj i j <;> simp [h]
+
+/-- **Covariance form of the degree–Fiedler assortativity (algebraic, no spectral hypothesis).**
+`𝒜 = dᵀ L (f∘f) = ½ Σ_{i,j}[i∼j](d_i−d_j)(f_i²−f_j²)`: the load-bearing hub-correction term in the
+open-2-path reformulation of `aggregate_triangle_poincare` is exactly the graph-Laplacian
+*covariance* of the degree vector `d` and the squared Fiedler vector `f∘f`
+(`informal/conjecture_B_global_summation_parts.md`). It is `≤ 0` whenever degree and `f²` are
+anti-monotone across edges (hub-flatness). Specialises `lapMatrix_bilin` at `u = d`, `w = f∘f`. -/
+lemma degAssort_covariance (f : V → ℝ) :
+    dotProduct (fun v => (G.degree v : ℝ)) ((G.lapMatrix ℝ).mulVec (fun v => (f v) ^ 2))
+      = (1 / 2) * ∑ i : V, ∑ j : V,
+          (if G.Adj i j then ((G.degree i : ℝ) - G.degree j) * ((f i) ^ 2 - (f j) ^ 2) else 0) := by
+  rw [lapMatrix_bilin G]
+  set a : V → V → ℝ :=
+    fun i j => if G.Adj i j then (G.degree i : ℝ) * ((f i) ^ 2 - (f j) ^ 2) else 0 with ha
+  set B : V → V → ℝ :=
+    fun i j => if G.Adj i j then ((G.degree i : ℝ) - G.degree j) * ((f i) ^ 2 - (f j) ^ 2) else 0
+    with hB
+  have hpt : ∀ i j : V, B i j = a i j + a j i := by
+    intro i j; simp only [ha, hB]
+    by_cases h : G.Adj i j
+    · have h' : G.Adj j i := h.symm
+      rw [if_pos h, if_pos h, if_pos h']; ring
+    · have h' : ¬ G.Adj j i := fun x => h x.symm
+      rw [if_neg h, if_neg h, if_neg h']; ring
+  have hswap : (∑ i : V, ∑ j : V, a i j) = ∑ i : V, ∑ j : V, a j i := Finset.sum_comm
+  have hBsum : (∑ i : V, ∑ j : V, B i j)
+      = (∑ i : V, ∑ j : V, a i j) + (∑ i : V, ∑ j : V, a j i) := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun j _ => hpt i j
+  rw [← hswap] at hBsum
+  linarith [hBsum]
+
+/-- **Degree-weighted summation-by-parts identity (spectral).** Multiplying the row equation
+`A f = (D−lam) f` by the degree-weighted multiplier `d_v f_v` and summing:
+`(D f)ᵀ(A f) = Σ_v d_v (d_v − lam) f_v²`, equivalently `Σ_{ab∈E}(d_a+d_b)f_a f_b
+= Σ_v d_v(d_v−lam)f_v²`. The `w = d` member of the edge↔diagonal SBP family
+(`informal/conjecture_B_global_summation_parts.md`): it converts a degree-weighted *edge*
+correlation into a degree *diagonal*, with the eigenvalue entering linearly. -/
+lemma quadForm_deg_adjMatrix_fiedler (f : V → ℝ) (lam : ℝ)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
+    dotProduct ((G.degMatrix ℝ).mulVec f) ((G.adjMatrix ℝ).mulVec f)
+      = ∑ v : V, (G.degree v : ℝ) * ((G.degree v : ℝ) - lam) * (f v) ^ 2 := by
+  have hA := adjMatrix_mulVec_fiedler G f lam heig
+  have hDf : (G.degMatrix ℝ).mulVec f = fun v => (G.degree v : ℝ) * f v := by
+    funext v; simp [SimpleGraph.degMatrix, Matrix.mulVec_diagonal]
+  rw [hA, hDf]
+  simp only [dotProduct, Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
+  refine Finset.sum_congr rfl fun v _ => ?_
+  ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
