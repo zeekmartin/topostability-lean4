@@ -430,6 +430,39 @@ lemma adjMatrix_mulVec_sum (f : V → ℝ) :
     rw [SimpleGraph.card_neighborFinset_eq_degree]
   rw [hcnt]
 
+/-- **Lagrange identity (Gram determinant = sum of squares).** For any `a, b : ι → ℝ`,
+`(Σ aᵢ²)(Σ bᵢ²) − (Σ aᵢbᵢ)² = ½ Σ_{i,j}(aᵢbⱼ − aⱼbᵢ)²` — the Cauchy–Schwarz/Gram-determinant gap as
+a manifest sum of squares. Specialising `a = h` (edge-lift `hₑ = f_a+f_b`), `b = 1` gives the
+manifestly-nonnegative part of the determinant `det(M_low) = (4λ₂/n)(λ₂·G − m·T)`, namely
+`G = m·fᵀQf − S² = ½ Σ_{e,e'}(hₑ − h_{e'})² = m²·Var_E(h) ≥ 0`
+(`informal/conjecture_B_determinant_form.md`). -/
+lemma lagrange_identity {ι : Type*} [Fintype ι] (a b : ι → ℝ) :
+    (∑ i : ι, (a i) ^ 2) * (∑ i : ι, (b i) ^ 2) - (∑ i : ι, a i * b i) ^ 2
+      = (1 / 2) * ∑ i : ι, ∑ j : ι, (a i * b j - a j * b i) ^ 2 := by
+  have hAA : (∑ i : ι, ∑ j : ι, (a i) ^ 2 * (b j) ^ 2)
+      = (∑ i : ι, (a i) ^ 2) * (∑ j : ι, (b j) ^ 2) := by
+    rw [← Finset.sum_mul_sum]
+  have hBB : (∑ i : ι, ∑ j : ι, (a j) ^ 2 * (b i) ^ 2)
+      = (∑ i : ι, (a i) ^ 2) * (∑ j : ι, (b j) ^ 2) := by
+    rw [Finset.sum_comm, ← Finset.sum_mul_sum]
+  have hAB : (∑ i : ι, ∑ j : ι, 2 * ((a i * b i) * (a j * b j)))
+      = 2 * ((∑ i : ι, a i * b i) * (∑ j : ι, a j * b j)) := by
+    have h2 : (∑ i : ι, ∑ j : ι, 2 * ((a i * b i) * (a j * b j)))
+        = 2 * ∑ i : ι, ∑ j : ι, (a i * b i) * (a j * b j) := by
+      rw [Finset.mul_sum]
+      refine Finset.sum_congr rfl fun i _ => ?_
+      rw [Finset.mul_sum]
+    rw [h2, ← Finset.sum_mul_sum]
+  have hsplit : (∑ i : ι, ∑ j : ι, (a i * b j - a j * b i) ^ 2)
+      = (∑ i : ι, ∑ j : ι, (a i) ^ 2 * (b j) ^ 2)
+        + (∑ i : ι, ∑ j : ι, (a j) ^ 2 * (b i) ^ 2)
+        - (∑ i : ι, ∑ j : ι, 2 * ((a i * b i) * (a j * b j))) := by
+    rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun j _ => by ring
+  rw [hsplit, hAA, hBB, hAB]; ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
