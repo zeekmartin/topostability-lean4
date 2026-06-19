@@ -402,6 +402,34 @@ lemma quadForm_weighted_laplacian (W : Matrix V V ℝ) (hsymm : ∀ i j : V, W i
           Finset.sum_congr rfl fun i _ => hpull i
         rw [hrw]
 
+/-- **Adjacency column-sum / weighted handshake (algebraic).** `Σ_v (A f)_v = Σ_v d_v f_v`, i.e.
+`1ᵀ A f = S` (`S = Σ_v d_v f_v`). With `1ᵀ D f = S` this gives `1ᵀ(D+A)f = 2S` — the off-diagonal
+`⟨u₁, (λ₂Q − L_M) u₂⟩ = λ₂·2S/√n` of the 2×2 low-frequency `{const, Fiedler}` block of
+`M = λ₂Q − L_M`, whose positive-semidefiniteness is exactly Conjecture B; the `S²` it contributes is
+the `S²/m` correction of the lift bound (`informal/conjecture_B_spectral_orthogonality.md`).
+No spectral hypothesis. -/
+lemma adjMatrix_mulVec_sum (f : V → ℝ) :
+    ∑ v : V, (G.adjMatrix ℝ).mulVec f v = ∑ u : V, (G.degree u : ℝ) * f u := by
+  have hrow : ∀ v : V, (G.adjMatrix ℝ).mulVec f v
+      = ∑ u : V, if G.Adj v u then f u else 0 := by
+    intro v
+    rw [SimpleGraph.adjMatrix_mulVec_apply, SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter]
+  simp_rw [hrow]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl fun u _ => ?_
+  have hfac : (∑ v : V, if G.Adj v u then f u else 0)
+      = (∑ v : V, if G.Adj v u then (1 : ℝ) else 0) * f u := by
+    rw [Finset.sum_mul]
+    refine Finset.sum_congr rfl fun v _ => ?_
+    by_cases h : G.Adj v u <;> simp [h]
+  rw [hfac]
+  have hcnt : (∑ v : V, if G.Adj v u then (1 : ℝ) else 0) = (G.degree u : ℝ) := by
+    rw [Finset.sum_boole]
+    rw [show (Finset.univ.filter (fun v => G.Adj v u)) = G.neighborFinset u from by
+      ext v; simp [SimpleGraph.mem_neighborFinset, SimpleGraph.adj_comm]]
+    rw [SimpleGraph.card_neighborFinset_eq_degree]
+  rw [hcnt]
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
