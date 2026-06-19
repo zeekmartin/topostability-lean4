@@ -369,6 +369,39 @@ lemma lapMatrix_mulVec_sum_zero (g : V → ℝ) :
     exact Finset.sum_congr rfl fun u _ => hanti v u
   linarith [h1, h2]
 
+/-- **Weighted-Laplacian quadratic form / sum-of-squares (algebraic).** For any *symmetric* weight
+matrix `W`, the `W`-Dirichlet energy is `Σ_{i,j} W_ij (f_i−f_j)² = 2[Σ_i (Σ_j W_ij) f_i² −
+Σ_{i,j} W_ij f_i f_j]`, i.e. `fᵀ(diag(rowSum W) − W)f = ½ Σ_{i,j} W_ij (f_i−f_j)²`. Specialising
+`W = P` (the open-2-path operator `P_ab = #common nbrs with a≁b`) gives the manifest sum-of-squares
+`Open = fᵀL_P f = Σ_{a<b} P_ab (f_a−f_b)²`, i.e. `L_P = B_openᵀ B_open` with one row per open
+cherry (`informal/conjecture_B_open2path_operator.md`). No spectral hypothesis. -/
+lemma quadForm_weighted_laplacian (W : Matrix V V ℝ) (hsymm : ∀ i j : V, W i j = W j i)
+    (f : V → ℝ) :
+    ∑ i : V, ∑ j : V, W i j * (f i - f j) ^ 2
+      = 2 * (∑ i : V, (∑ j : V, W i j) * (f i) ^ 2)
+        - 2 * (∑ i : V, ∑ j : V, W i j * (f i * f j)) := by
+  have hpull : ∀ i : V, (∑ j : V, W i j * (f i) ^ 2) = (∑ j : V, W i j) * (f i) ^ 2 := by
+    intro i; rw [Finset.sum_mul]
+  have hsymm2 : (∑ i : V, ∑ j : V, W i j * (f j) ^ 2)
+      = ∑ i : V, ∑ j : V, W i j * (f i) ^ 2 := by
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun a _ => Finset.sum_congr rfl fun b _ => ?_
+    rw [hsymm b a]
+  have hexp : ∀ i j : V, W i j * (f i - f j) ^ 2
+      = W i j * (f i) ^ 2 + W i j * (f j) ^ 2 - 2 * (W i j * (f i * f j)) := fun i j => by ring
+  calc (∑ i : V, ∑ j : V, W i j * (f i - f j) ^ 2)
+      = (∑ i : V, ∑ j : V, W i j * (f i) ^ 2) + (∑ i : V, ∑ j : V, W i j * (f j) ^ 2)
+          - 2 * (∑ i : V, ∑ j : V, W i j * (f i * f j)) := by
+        simp_rw [hexp]
+        simp only [Finset.sum_sub_distrib, Finset.sum_add_distrib, ← Finset.mul_sum]
+    _ = 2 * (∑ i : V, (∑ j : V, W i j) * (f i) ^ 2)
+          - 2 * (∑ i : V, ∑ j : V, W i j * (f i * f j)) := by
+        rw [hsymm2, ← two_mul]
+        have hrw : (∑ i : V, ∑ j : V, W i j * (f i) ^ 2)
+            = ∑ i : V, (∑ j : V, W i j) * (f i) ^ 2 :=
+          Finset.sum_congr rfl fun i _ => hpull i
+        rw [hrw]
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
