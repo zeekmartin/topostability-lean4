@@ -504,6 +504,33 @@ lemma B2prime_min_decomp (f : V → ℝ) :
   · simp only [if_pos h]; rw [hmin]; ring
   · simp only [if_neg h]; ring
 
+/-- **Per-edge triangle bound (algebraic).** For an edge `i∼j`, the number of common neighbours
+`triCount = |N(i)∩N(j)|` is at most `min(d_i,d_j) − 1` (a common neighbour avoids both endpoints, so
+`N(i)∩N(j) ⊆ N(i).erase j` and `⊆ N(j).erase i`). This is the first step of every regime chain:
+it gives `T ≤ B2′` (`T = Σ_e t_e g_e²`, `B2′ = Σ_e(min(d_a,d_b)−1)g_e²`), the reduction of the
+triangle inequality to the triangle-free degree-only one
+(`informal/conjecture_B_three_regimes_chain.md`). -/
+lemma triCount_le_min_degree_sub_one {i j : V} (hij : G.Adj i j) :
+    triCount G i j ≤ min (G.degree i) (G.degree j) - 1 := by
+  have hle : ∀ a b : V, G.Adj a b →
+      (G.neighborFinset a ∩ G.neighborFinset b).card ≤ G.degree a - 1 := by
+    intro a b hab
+    have hbmem : b ∈ G.neighborFinset a := by rw [SimpleGraph.mem_neighborFinset]; exact hab
+    have hsub : G.neighborFinset a ∩ G.neighborFinset b ⊆ (G.neighborFinset a).erase b := by
+      intro x hx
+      simp only [Finset.mem_inter, SimpleGraph.mem_neighborFinset] at hx
+      simp only [Finset.mem_erase, SimpleGraph.mem_neighborFinset]
+      exact ⟨fun hxj => (G.ne_of_adj (hxj ▸ hx.2)) rfl, hx.1⟩
+    calc (G.neighborFinset a ∩ G.neighborFinset b).card
+        ≤ ((G.neighborFinset a).erase b).card := Finset.card_le_card hsub
+      _ = (G.neighborFinset a).card - 1 := Finset.card_erase_of_mem hbmem
+      _ = G.degree a - 1 := by rw [SimpleGraph.card_neighborFinset_eq_degree]
+  have h1 := hle i j hij
+  have h2 := hle j i hij.symm
+  rw [Finset.inter_comm] at h2
+  simp only [triCount]
+  omega
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
