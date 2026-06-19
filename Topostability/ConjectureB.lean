@@ -486,6 +486,73 @@ lemma aggregate_triangle_poincare (f : V → ℝ) (lam : ℝ)
     triEnergy G f ≤ 2 * lam * degQuad G f := by
   sorry
 
+/-- **Aggregate triangle-Poincaré for regular graphs (no `sorry`).** For a `d`-regular graph and any
+Laplacian eigenpair `(lam, f)`, `triEnergy ≤ 2·lam·degQuad` — the regular case of
+`aggregate_triangle_poincare`. Proof: each `t_e = |N(a)∩N(b)| ≤ d−1` (a common neighbour avoids the
+two edge endpoints), so `T ≤ (d−1)·D` with `D = Σ_{i,j}[i∼j](f_i−f_j)² = 2·lam·‖f‖²` (the Dirichlet
+form at the eigenvector); and `2·lam·degQuad = 2·lam·d·‖f‖² = d·D ≥ (d−1)·D` since `D ≥ 0`. No
+spectral bound `λ₂ ≤ d+1` is needed — regularity (`degQuad = d‖f‖²`) supplies the factor directly
+(`informal/conjecture_B_edge_variance.md`). -/
+theorem aggregate_triangle_poincare_regular (f : V → ℝ) (lam : ℝ) (d : ℕ)
+    (hreg : ∀ v : V, G.degree v = d)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
+    triEnergy G f ≤ 2 * lam * degQuad G f := by
+  set Sf : ℝ := ∑ v : V, (f v) ^ 2 with hSf
+  have hquad : (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) = 2 * lam * Sf := by
+    have h1 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = ∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v := by
+      rw [Matrix.toLinearMap₂'_apply']; rfl
+    have h2 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) / 2 := by
+      rw [SimpleGraph.lapMatrix_toLinearMap₂']
+    have h3 : (∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v) = lam * Sf := by
+      rw [heig, hSf, Finset.mul_sum]
+      refine Finset.sum_congr rfl fun v _ => ?_
+      simp only [Pi.smul_apply, smul_eq_mul]; ring
+    rw [h1, h3] at h2
+    linarith [h2]
+  have hdq : degQuad G f = (d : ℝ) * Sf := by
+    rw [degQuad, hSf, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun v _ => ?_
+    rw [hreg v]
+  have hcard : ∀ i j : V, G.Adj i j →
+      ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ (d : ℝ) - 1 := by
+    intro i j hadj
+    have hjmem : j ∈ G.neighborFinset i := by rw [SimpleGraph.mem_neighborFinset]; exact hadj
+    have hsub : G.neighborFinset i ∩ G.neighborFinset j ⊆ (G.neighborFinset i).erase j := by
+      intro x hx
+      simp only [Finset.mem_inter, SimpleGraph.mem_neighborFinset] at hx
+      simp only [Finset.mem_erase, SimpleGraph.mem_neighborFinset]
+      exact ⟨fun hxj => (G.ne_of_adj (hxj ▸ hx.2)) rfl, hx.1⟩
+    have hcle : (G.neighborFinset i ∩ G.neighborFinset j).card ≤ (G.neighborFinset i).card - 1 := by
+      calc (G.neighborFinset i ∩ G.neighborFinset j).card
+          ≤ ((G.neighborFinset i).erase j).card := Finset.card_le_card hsub
+        _ = (G.neighborFinset i).card - 1 := Finset.card_erase_of_mem hjmem
+    have hdeg : (G.neighborFinset i).card = d := by
+      rw [SimpleGraph.card_neighborFinset_eq_degree]; exact hreg i
+    rw [hdeg] at hcle
+    have hd1 : 1 ≤ d := by rw [← hdeg]; exact Finset.card_pos.mpr ⟨j, hjmem⟩
+    have hcast : ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ ((d - 1 : ℕ) : ℝ) := by
+      exact_mod_cast hcle
+    rwa [Nat.cast_sub hd1, Nat.cast_one] at hcast
+  have hTle : triEnergy G f
+      ≤ ((d : ℝ) - 1) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
+    rw [triEnergy, Finset.mul_sum]
+    refine Finset.sum_le_sum fun i _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun j _ => ?_
+    split_ifs with h
+    · exact mul_le_mul_of_nonneg_right (hcard i j h) (sq_nonneg _)
+    · simp
+  have hDnn : 0 ≤ (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) :=
+    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => by split_ifs <;> positivity
+  calc triEnergy G f
+      ≤ ((d : ℝ) - 1) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := hTle
+    _ ≤ (d : ℝ) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
+        nlinarith [hDnn]
+    _ = (d : ℝ) * (2 * lam * Sf) := by rw [hquad]
+    _ = 2 * lam * degQuad G f := by rw [hdq]; ring
+
 /-- **Regime (ii): `Required > 0` (OPEN).** The bottleneck regime. Empirically the slack
 `Deficit − Required = RHS − T` stays positive with `Deficit/Required ≥ 1.7`; no closed-form
 proof yet (every edge/apex-local bound is either invalid on the bottleneck edges or too
