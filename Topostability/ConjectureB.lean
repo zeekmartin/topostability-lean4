@@ -305,6 +305,35 @@ lemma neighbor_dirichlet_identity (f : V → ℝ) (c : V) :
     exact Finset.sum_congr rfl fun b _ => by ring
   rw [hsplit, hP1, hP2, hP3, hcard]; ring
 
+/-- **Carré-du-champ product rule for the graph Laplacian (algebraic, no spectral hypothesis).**
+`(L(f∘f))_v = 2·f_v·(Lf)_v − Σ_{u∼v}(f_v−f_u)²`, i.e. `L(f²) = 2 f·Lf − 2Γ(f)` with the Bakry–Émery
+carré du champ `Γ(f)(v) = ½Σ_{u∼v}(f_v−f_u)²`. At a Laplacian eigenvector (`Lf = λ₂·f`) this is the
+eigenfunction Bochner identity `L(f²) = 2λ₂·f² − 2Γ(f)`, which (degree-averaged) recasts the
+covariance correction as a carré du champ: `𝒜 = Cov_L(d,f²) = 2λ₂·fᵀDf − 2⟨d,Γ(f)⟩`
+(`informal/conjecture_B_bochner_open_paths.md`). -/
+lemma lapMatrix_mulVec_sq (f : V → ℝ) (v : V) :
+    (G.lapMatrix ℝ).mulVec (fun w => (f w) ^ 2) v
+      = 2 * f v * ((G.lapMatrix ℝ).mulVec f v)
+        - ∑ u : V, if G.Adj v u then (f v - f u) ^ 2 else 0 := by
+  have hrow : ∀ (g : V → ℝ) (x : V), ((G.lapMatrix ℝ).mulVec g) x
+      = ∑ u : V, if G.Adj x u then (g x - g u) else 0 := by
+    intro g x
+    have hLDA : G.lapMatrix ℝ = G.degMatrix ℝ - G.adjMatrix ℝ := rfl
+    rw [hLDA, Matrix.sub_mulVec, Pi.sub_apply]
+    rw [show (G.degMatrix ℝ).mulVec g x = (G.degree x : ℝ) * g x from by
+      simp [SimpleGraph.degMatrix, Matrix.mulVec_diagonal]]
+    rw [SimpleGraph.adjMatrix_mulVec_apply]
+    rw [show (∑ u : V, if G.Adj x u then (g x - g u) else 0)
+        = ∑ u ∈ G.neighborFinset x, (g x - g u) from by
+      rw [SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter]]
+    rw [Finset.sum_sub_distrib, Finset.sum_const, SimpleGraph.card_neighborFinset_eq_degree,
+        nsmul_eq_mul]
+  rw [hrow (fun w => (f w) ^ 2) v, hrow f v, Finset.mul_sum, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun u _ => ?_
+  by_cases h : G.Adj v u
+  · simp only [if_pos h]; ring
+  · simp only [if_neg h]; ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
