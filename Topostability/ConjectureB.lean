@@ -463,6 +463,18 @@ lemma lagrange_identity {ι : Type*} [Fintype ι] (a b : ι → ℝ) :
     exact Finset.sum_congr rfl fun j _ => by ring
   rw [hsplit, hAA, hBB, hAB]; ring
 
+/-- **Variance identity (sum-of-squares form).** `(Σ xᵢ²)·N − (Σ xᵢ)² = ½ Σ_{i,j}(xᵢ − xⱼ)²`
+(`N = card ι`): `N·Var(x)` as a manifest sum of squares. Corollary of `lagrange_identity` at
+`b ≡ 1`. Specialising `x = h` (edge-lift `hₑ = f_a+f_b`, `ι = edges`, `N = m`) gives the
+manifestly-nonnegative determinant part `G_det = m·Σhₑ² − S² = ½ Σ_{e,e'}(hₑ − h_{e'})²`, hence
+`G = Σhₑ² − S²/m = m·Var_E(h) ≥ 0` in `det(M_low) = (4λ₂/n)(λ₂·G − m·T)`
+(`informal/conjecture_B_edge_variance.md`, where B ⟺ `T ≤ λ₂·G`). -/
+lemma sum_sq_mul_card_sub_sq {ι : Type*} [Fintype ι] (x : ι → ℝ) :
+    (∑ i : ι, (x i) ^ 2) * (Fintype.card ι : ℝ) - (∑ i : ι, x i) ^ 2
+      = (1 / 2) * ∑ i : ι, ∑ j : ι, (x i - x j) ^ 2 := by
+  have h := lagrange_identity x (fun _ => (1 : ℝ))
+  simpa using h
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
