@@ -334,6 +334,41 @@ lemma lapMatrix_mulVec_sq (f : V → ℝ) (v : V) :
   · simp only [if_pos h]; ring
   · simp only [if_neg h]; ring
 
+/-- **Zero column-sum of the graph Laplacian (algebraic).** `Σ_v (L g)_v = 0` for any `g`
+(`L = D − A`; the Dirichlet form `Σ_{i,j}[i∼j](g_i−g_j)` is antisymmetric). This is the engine of
+the integrated Bochner identity: with the carré du champ `Γ(f)` (`Σ_v Γ(f)(v) = fᵀLf`) and
+`Γ₂(f) = ½·L Γ(f) − λ₂·Γ(f)` (eigenvector), it gives `Σ_v Γ₂(f)(v) = −λ₂·Σ_v Γ(f)(v) = −λ₂²`
+(`informal/conjecture_B_weighted_bochner.md`). -/
+lemma lapMatrix_mulVec_sum_zero (g : V → ℝ) :
+    ∑ v : V, (G.lapMatrix ℝ).mulVec g v = 0 := by
+  have hrow : ∀ (x : V), ((G.lapMatrix ℝ).mulVec g) x
+      = ∑ u : V, if G.Adj x u then (g x - g u) else 0 := by
+    intro x
+    have hLDA : G.lapMatrix ℝ = G.degMatrix ℝ - G.adjMatrix ℝ := rfl
+    rw [hLDA, Matrix.sub_mulVec, Pi.sub_apply]
+    rw [show (G.degMatrix ℝ).mulVec g x = (G.degree x : ℝ) * g x from by
+      simp [SimpleGraph.degMatrix, Matrix.mulVec_diagonal]]
+    rw [SimpleGraph.adjMatrix_mulVec_apply]
+    rw [show (∑ u : V, if G.Adj x u then (g x - g u) else 0)
+        = ∑ u ∈ G.neighborFinset x, (g x - g u) from by
+      rw [SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter]]
+    rw [Finset.sum_sub_distrib, Finset.sum_const, SimpleGraph.card_neighborFinset_eq_degree,
+        nsmul_eq_mul]
+  simp_rw [hrow]
+  set a : V → V → ℝ := fun v u => if G.Adj v u then (g v - g u) else 0 with ha
+  have hanti : ∀ v u : V, a u v = - a v u := by
+    intro v u; simp only [ha]
+    by_cases h : G.Adj v u
+    · rw [if_pos h, if_pos h.symm]; ring
+    · rw [if_neg h, if_neg (fun x => h x.symm)]; ring
+  have h1 : (∑ v : V, ∑ u : V, a v u) = ∑ v : V, ∑ u : V, a u v := Finset.sum_comm
+  have h2 : (∑ v : V, ∑ u : V, a u v) = - ∑ v : V, ∑ u : V, a v u := by
+    rw [← Finset.sum_neg_distrib]
+    refine Finset.sum_congr rfl fun v _ => ?_
+    rw [← Finset.sum_neg_distrib]
+    exact Finset.sum_congr rfl fun u _ => hanti v u
+  linarith [h1, h2]
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
