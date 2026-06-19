@@ -275,6 +275,36 @@ lemma quadForm_deg_adjMatrix_fiedler (f : V → ℝ) (lam : ℝ)
   refine Finset.sum_congr rfl fun v _ => ?_
   ring
 
+/-- **Neighbourhood variance (Dirichlet) identity (algebraic, no spectral hypothesis).** Over the
+neighbours of any apex `c`, the full ordered Dirichlet energy is
+`Σ_{a,b∈N(c)}(f_a−f_b)² = 2·d_c·(Σ_{v∈N(c)} f_v²) − 2·(Σ_{v∈N(c)} f_v)²`. The per-apex building
+block of the open-2-path / triangle energy split (`informal/conjecture_B_open_apex_pairing.md`):
+splitting the pair sum by adjacency gives `Open_c + T_c` on the left, and with the eigen-recursion
+`Σ_{v∈N(c)} f_v = (d_c−λ₂)f_c` the right side becomes `2 d_c·mass_c − 2(d_c−λ₂)² f_c²`. -/
+lemma neighbor_dirichlet_identity (f : V → ℝ) (c : V) :
+    ∑ a ∈ G.neighborFinset c, ∑ b ∈ G.neighborFinset c, (f a - f b) ^ 2
+      = 2 * (G.degree c : ℝ) * (∑ v ∈ G.neighborFinset c, (f v) ^ 2)
+        - 2 * (∑ v ∈ G.neighborFinset c, f v) ^ 2 := by
+  set S := G.neighborFinset c with hS
+  have hcard : (S.card : ℝ) = (G.degree c : ℝ) := by
+    rw [hS, SimpleGraph.card_neighborFinset_eq_degree]
+  have hP1 : (∑ a ∈ S, ∑ _b ∈ S, (f a) ^ 2) = (S.card : ℝ) * ∑ v ∈ S, (f v) ^ 2 := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun a _ => ?_
+    rw [Finset.sum_const, nsmul_eq_mul]
+  have hP2 : (∑ _a ∈ S, ∑ b ∈ S, (f b) ^ 2) = (S.card : ℝ) * ∑ v ∈ S, (f v) ^ 2 := by
+    rw [Finset.sum_const, nsmul_eq_mul]
+  have hP3 : (∑ a ∈ S, ∑ b ∈ S, f a * f b) = (∑ v ∈ S, f v) ^ 2 := by
+    rw [← Finset.sum_mul_sum, pow_two]
+  have hsplit : (∑ a ∈ S, ∑ b ∈ S, (f a - f b) ^ 2)
+      = (∑ a ∈ S, ∑ b ∈ S, (f a) ^ 2) + (∑ a ∈ S, ∑ b ∈ S, (f b) ^ 2)
+        - 2 * (∑ a ∈ S, ∑ b ∈ S, f a * f b) := by
+    rw [Finset.mul_sum, ← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun a _ => ?_
+    rw [Finset.mul_sum, ← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun b _ => by ring
+  rw [hsplit, hP1, hP2, hP3, hcard]; ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
