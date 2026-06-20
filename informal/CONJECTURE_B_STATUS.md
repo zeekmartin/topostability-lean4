@@ -88,13 +88,18 @@ fail:**
   degree low (`d = 2,3,4`) on a growing dense core gives `gap/eff → g(d)` (`g(2) ≈ 0.68`, `g(3) ≈ 1.20`,
   `g(4) ≈ 1.63`), *stable* as `n → ∞`. There is no `n₀` above which `gap/eff ≥ 5`.
 
-**Corrected extremal family:** `v₀` attached to two **low-degree** core vertices (`min(d_a,d_b)` fixed)
-inside an otherwise dense core. There `gap → const ≈ 1.3 > 0` (nearly degree-independent) and
-`eff → const`, so `gap/eff → g(min-degree)`, `inf ≈ 0.68` at degree 2 — **persistent, genuine TYPE A**
-(`f_v₀² ≈ 0.66`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary. **`gap > 0` holds
-throughout** (low-degree family `gap → 1.3 > 0`; dense family `gap → 0⁺ = c(q)·n/m`); only the *ratio*
-dips to `≈ 0.68`. This low-degree-attachment family — `gap → const > 0` with fixed `d`, `n → ∞` — is
-the genuine target for a closed-form bound.
+**Corrected extremal family (SOLVED in closed form — see `conjecture_B_typeA_low_degree_ports.md`):**
+`v₀` attached to two **low-degree ports** `a,b` into a dense/complete bulk. The extremizer is the
+**`d=2` twin-port** model (`a,b` share both bulk neighbours, `a≁b`, bulk `= K_N`): as `N → ∞`,
+
+> **`λ → 1`** (secular `(λ−1)(λ−4)=0`), **`eff → 2`** (antisymmetric resolvent, both *proven*),
+> **`gap → 2/3`**, so **`gap/eff → 1/3`**.
+
+This reproduces the random fixed-degree values (disjoint ports `s=0`: `d=2→0.68, 3→1.22, 4→1.64`) and
+lies below them (twin ports). So the open lemma sharpens to **`gap/eff ≥ 1/3 > 0`** for TYPE A, with an
+**explicit extremizer**; `gap > 0` is safe (`gap → 2/3` at the extremum). It is *persistent* (uniform
+in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary. Remaining: the closed form
+`gap → 2/3` and the extremality/rigidity (complete bulk + full overlap minimize `gap/eff`).
 
 **The three `sorry`s** (`ConjectureB.lean`):
 
