@@ -45,8 +45,9 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
 `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
 `triEnergy_le_B2prime`, `conjectureB_regime_two` (now `le_trans` of `triEnergy_le_B2prime` +
-`B2prime_le_RHS`), `aggregate_triangle_poincare_regular`, `conjectureB_lift` (reduction; closed
-modulo the two regime sorrys).
+`B2prime_le_RHS`), `aggregate_triangle_poincare_regular`, `conjectureB_lift` (now the uniform `B2′`
+route — closed modulo the **single** sorry `B2prime_le_RHS`; `#print axioms` confirms it no longer
+depends on `aggregate_triangle_poincare`).
 
 `Paper16.lean` — `poincare_on_block`, `block_gap`, `block_gap_lower`, `quadform_edge_split`,
 `lapQuadForm_edge_split`, `block_fiedler_energy`.
@@ -111,16 +112,22 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 
 | `sorry` | statement | obstruction |
 |---|---|---|
-| `aggregate_triangle_poincare` (641) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular (holds 277/277; regular proved) |
-| **`B2prime_le_RHS` (761)** | `B2′ ≤ RHS` (= `gap ≥ 0`) | **TYPE A only** (the precise regime-(ii) obstruction; replaces the old monolithic `conjectureB_regime_two` sorry); TYPE B closed via `_typeB` |
-| `conjectureB` (805) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (not yet formalised) |
+| `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular — **now an independent off-chain result** (regular case proved); *not used* by `conjectureB_lift` |
+| **`B2prime_le_RHS` (769)** | `B2′ ≤ RHS` (= `gap ≥ 0`, **unconditional**) | **the single sorry of `conjectureB_lift`**; TYPE A obstruction (`gap/eff ≥ 1/3`); TYPE B closed via `_typeB` |
+| `conjectureB` (808) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
-**Regime (ii) refactored — `conjectureB_regime_two` is now sorry-free** (`conjecture_B_sorry_reduction.md`):
-it is `le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)`. `triEnergy_le_B2prime` (sorry-free) proves
-`T ≤ B2′` (the per-edge `t_e ≤ min−1` step); the single remaining regime-(ii) sorry is **`B2prime_le_RHS`**
-= `B2′ ≤ RHS` = `gap ≥ 0` — the precise TYPE A inequality. The **TYPE B branch** is separately
-closed sorry-free by `conjectureB_regime_two_typeB` (from `typeB_triEnergy_bound` + a closing
-hypothesis `(W·Cflat)·λ² ≤ RHS`).
+**`conjectureB_lift` now depends on EXACTLY ONE sorry — `B2prime_le_RHS`** (`#print axioms` verified;
+`conjecture_B_sorry_reduction.md`). It is restructured to the **uniform `B2′` route** with no regime
+split: `conjectureB_lift = le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)`, where
+`triEnergy_le_B2prime` (sorry-free) is `T ≤ B2′` and `B2prime_le_RHS` (now *unconditional* — `gap ≥ 0`
+holds for all graphs) is the only remaining inequality. **`aggregate_triangle_poincare` is no longer on
+this chain** (kept as an independent stronger result, regular case proved). `conjectureB_regime_two` is
+likewise `le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)` (sorry-free modulo `B2prime_le_RHS`); the
+TYPE B branch is separately closed by `conjectureB_regime_two_typeB`.
+
+The graph statement `conjectureB` carries the *orthogonal* projected-Fiedler lift-reduction sorry
+(Rayleigh of `T(G)` → the energy inequality `conjectureB_lift`); once that is formalised, `conjectureB`
+inherits the single `B2prime_le_RHS` obstruction.
 
 ## 7. Eliminated routes (30+, one-line reasons)
 

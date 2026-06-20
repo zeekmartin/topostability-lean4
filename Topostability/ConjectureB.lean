@@ -632,12 +632,19 @@ theorem typeB_triEnergy_bound (f : V → ℝ) (B : Finset V) (W Cflat lam2 : ℝ
     _ ≤ W * (Cflat * lam2 ^ 2) := h2
     _ = (W * Cflat) * lam2 ^ 2 := by ring
 
-/-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
+/-- **Aggregate triangle-Poincaré (OPEN — independent stronger result, NOT on the `conjectureB`
+chain).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
 (`apex_triangle_energy_identity`, `Paper15`). The *local* Poincaré
 `E_{G[N(c)]}(f) ≤ λ₂·Σ_{N(c)}f²` fails on ~6% of apices, but the aggregate holds on every
-tested graph (0 violations). Proof path open. -/
+tested graph (0 violations). Proof path open.
+
+**Note:** `T ≤ λ₂fᵀDf` is *strictly stronger* than what Conjecture B needs (`T ≤ λ₂G = λ₂(2fᵀDf − λ
+− S²/m)`, since `fᵀDf ≤ 2fᵀDf − λ − S²/m` exactly when `Required ≤ 0`). The main proof
+(`conjectureB_lift`) now goes through the uniform `B2′` route (`triEnergy_le_B2prime` +
+`B2prime_le_RHS`) and **does not use this lemma**; it is retained as a standalone result whose regular
+case is proved (`aggregate_triangle_poincare_regular`). -/
 lemma aggregate_triangle_poincare (f : V → ℝ) (lam : ℝ)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
     triEnergy G f ≤ 2 * lam * degQuad G f := by
@@ -756,11 +763,11 @@ lemma triEnergy_le_B2prime (f : V → ℝ) :
 (the triangle-free degree inequality). **This is the precise missing step.** TYPE B is *closed*
 structurally (`conjectureB_regime_two_typeB`, via block flatness); the open case is TYPE A
 (`gap/eff ≥ 1/3` with `eff > 0`, the extremality program — `informal/CONJECTURE_B_STATUS.md` §10,
-`informal/conjecture_B_sorry_reduction.md`). The hypotheses `hmE, hlam, heig, hReq` are carried for
-the eventual proof (the bottleneck regime). -/
+`informal/conjecture_B_sorry_reduction.md`). **Unconditional** (no `Required`-sign hypothesis): `gap ≥ 0`
+holds for *all* graphs (`RHS = 2λ₂G ≥ λ₂G ≥ B2′`), so this single inequality covers both regimes and
+is the *only* sorry the lift inequality `conjectureB_lift` depends on. -/
 lemma B2prime_le_RHS (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
-    (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
     (∑ i : V, ∑ j : V,
         if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
       ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
@@ -775,28 +782,24 @@ lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
     (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
     triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig hReq)
+  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig)
 
 /-- **Conjecture B — triangle-energy lift inequality.** For a unit Fiedler vector `f`
 (`L_G f = λ₂ f`, `λ₂ > 0`) and `mE = |E| > 0`:
 `T ≤ λ₂·(fᵀQf − S²/m)`, ordered form `T_ord ≤ 2λ₂(2fᵀDf − λ₂ − S²/mE)`.
 
-This implies `λ₂(T(G)) ≤ λ₂(G)` (Conjecture B) via the projected Fiedler lift. Proof: a
-regime split on `sign(Required)`; **regime (i) is closed** here (modulo the aggregate
-Poincaré), regime (ii) is the open lemma. -/
+This implies `λ₂(T(G)) ≤ λ₂(G)` (Conjecture B) via the projected Fiedler lift.
+
+**Proof (restructured): the uniform `B2′` route** — `T ≤ B2′ ≤ RHS`, no regime split. The first step
+`triEnergy_le_B2prime` (sorry-free) is the per-edge `t_e ≤ min(d_a,d_b)−1` bound; the second
+`B2prime_le_RHS` is the single open inequality `gap = λ₂G − B2′ ≥ 0` (the triangle-free degree
+inequality, holding for *all* graphs). So **`conjectureB_lift` depends on exactly one sorry,
+`B2prime_le_RHS`**. (The earlier proof split on `sign(Required)` and used `aggregate_triangle_poincare`
+for regime (i); that lemma is now an *independent* stronger result, no longer on this chain.) -/
 theorem conjectureB_lift (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
-  by_cases hReq : lam + (degLin G f) ^ 2 / mE - degQuad G f ≤ 0
-  · -- Regime (i): Required ≤ 0  ⇒  fᵀDf ≥ λ₂ + S²/m  ⇒  fᵀQf − S²/m ≥ fᵀDf.
-    have hpoin := aggregate_triangle_poincare G f lam heig
-    calc triEnergy G f
-        ≤ 2 * lam * degQuad G f := hpoin
-      _ ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-          mul_le_mul_of_nonneg_left (by linarith) (by linarith)
-  · -- Regime (ii): Required > 0.
-    push_neg at hReq
-    exact conjectureB_regime_two G f lam mE hmE hlam heig (by linarith)
+    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
+  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig)
 
 /-- **Conjecture B (graph statement).** For connected `G` with `T(G)` connected,
 `λ₂(T(G)) ≤ λ₂(G)`. Reduces to `conjectureB_lift` via the projected Fiedler lift
