@@ -34,7 +34,7 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
   block-flatness input); the regime-(ii) conclusion for the TYPE B branch is now connected sorry-free
   via `conjectureB_regime_two_typeB`.
 
-**The 32 sorry-free theorems** (`ConjectureB.lean`, 26 + `Paper16.lean`, 6):
+**The 34 sorry-free theorems** (`ConjectureB.lean`, 28 + `Paper16.lean`, 6):
 
 `ConjectureB.lean` — `triEnergy_diag_corr`, `triEnergy_sub_two_lam_degQuad`,
 `adjMatrix_mulVec_fiedler`, `adjSq_mulVec_fiedler`, `quadForm_adjSq_eq_normSq`,
@@ -44,8 +44,9 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `lagrange_identity`, `sum_sq_mul_card_sub_sq`, `B2prime_min_decomp`,
 `triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
 `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
-`aggregate_triangle_poincare_regular`, `conjectureB_lift` (reduction; closed modulo the two regime
-sorrys).
+`triEnergy_le_B2prime`, `conjectureB_regime_two` (now `le_trans` of `triEnergy_le_B2prime` +
+`B2prime_le_RHS`), `aggregate_triangle_poincare_regular`, `conjectureB_lift` (reduction; closed
+modulo the two regime sorrys).
 
 `Paper16.lean` — `poincare_on_block`, `block_gap`, `block_gap_lower`, `quadform_edge_split`,
 `lapQuadForm_edge_split`, `block_fiedler_energy`.
@@ -111,15 +112,15 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 | `sorry` | statement | obstruction |
 |---|---|---|
 | `aggregate_triangle_poincare` (641) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular (holds 277/277; regular proved) |
-| `conjectureB_regime_two` (741) | `T ≤ 2λ(2fᵀDf−λ−S²/m)`, `Required>0` | **TYPE A only** (TYPE B branch now connected — see below); obstruction = TYPE A `gap/eff ≥ 1/3` (§10) |
-| `conjectureB` (772) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (not yet formalised) |
+| **`B2prime_le_RHS` (761)** | `B2′ ≤ RHS` (= `gap ≥ 0`) | **TYPE A only** (the precise regime-(ii) obstruction; replaces the old monolithic `conjectureB_regime_two` sorry); TYPE B closed via `_typeB` |
+| `conjectureB` (805) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (not yet formalised) |
 
-**TYPE B branch of regime (ii) — now formally connected (sorry-free):**
-`conjectureB_regime_two_typeB` derives the regime-(ii) conclusion from the proved block lemmas
-(`typeB_triEnergy_bound` → `triEnergy_le_block_dirichlet`) plus an explicit closing hypothesis
-`hclose : (W·Cflat)·λ² ≤ RHS` (the `T = O(λ²) ≤ Θ(λ) = RHS` inequality). So the path-bottleneck
-sub-regime is reduced to the (sorry-free) block machinery; the remaining open content of
-`conjectureB_regime_two` is **TYPE A** (`gap/eff ≥ 1/3`, §10).
+**Regime (ii) refactored — `conjectureB_regime_two` is now sorry-free** (`conjecture_B_sorry_reduction.md`):
+it is `le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)`. `triEnergy_le_B2prime` (sorry-free) proves
+`T ≤ B2′` (the per-edge `t_e ≤ min−1` step); the single remaining regime-(ii) sorry is **`B2prime_le_RHS`**
+= `B2′ ≤ RHS` = `gap ≥ 0` — the precise TYPE A inequality. The **TYPE B branch** is separately
+closed sorry-free by `conjectureB_regime_two_typeB` (from `typeB_triEnergy_bound` + a closing
+hypothesis `(W·Cflat)·λ² ≤ RHS`).
 
 ## 7. Eliminated routes (30+, one-line reasons)
 

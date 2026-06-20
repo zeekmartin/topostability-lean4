@@ -732,17 +732,50 @@ theorem conjectureB_regime_two_typeB (f : V → ℝ) (B : Finset V) (W Cflat lam
     triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
   le_trans (typeB_triEnergy_bound G f B W Cflat lam hW hoff hwt hflat) hclose
 
-/-- **Regime (ii): `Required > 0` (OPEN).** The bottleneck regime. Empirically the slack
-`Deficit − Required = RHS − T` stays positive with `Deficit/Required ≥ 1.7`; no closed-form
-proof yet (every edge/apex-local bound is either invalid on the bottleneck edges or too
-loose on the dense edges — see the `informal/` analyses). The TYPE B sub-regime is now formally
-reduced (`conjectureB_regime_two_typeB`); the remaining obstruction is TYPE A
-(`gap/eff ≥ 1/3`, see `informal/CONJECTURE_B_STATUS.md` §10). -/
+/-- **`T ≤ B2′` (sorry-free).** Summing the per-edge triangle bound
+`triCount ≤ min(d_a,d_b)−1` (`triCount_le_min_degree_sub_one`): the triangle energy is bounded by
+the triangle-free degree energy `B2′ = Σ_{i,j}[i∼j](min(d_i,d_j)−1)(f_i−f_j)²` (ordered double sum).
+This is the first, now-formalised, step of the regime-(ii) chain `T ≤ B2′ ≤ RHS`. -/
+lemma triEnergy_le_B2prime (f : V → ℝ) :
+    triEnergy G f
+      ≤ ∑ i : V, ∑ j : V,
+          if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2
+          else 0 := by
+  rw [triEnergy]
+  refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+  by_cases h : G.Adj i j
+  · rw [if_pos h, if_pos h]
+    refine mul_le_mul_of_nonneg_right ?_ (sq_nonneg _)
+    have hc : ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) = (triCount G i j : ℝ) := rfl
+    rw [hc]
+    exact_mod_cast triCount_le_min_degree_sub_one G h
+  · rw [if_neg h, if_neg h]
+
+/-- **`B2′ ≤ RHS` — the remaining open content of regime (ii) (the TYPE A obstruction, `gap ≥ 0`).**
+`B2′ = Σ_{i,j}[i∼j](min(d_i,d_j)−1)(f_i−f_j)² ≤ 2λ(2fᵀDf − λ − S²/m)`. Equivalently `gap = λ₂G − B2′ ≥ 0`
+(the triangle-free degree inequality). **This is the precise missing step.** TYPE B is *closed*
+structurally (`conjectureB_regime_two_typeB`, via block flatness); the open case is TYPE A
+(`gap/eff ≥ 1/3` with `eff > 0`, the extremality program — `informal/CONJECTURE_B_STATUS.md` §10,
+`informal/conjecture_B_sorry_reduction.md`). The hypotheses `hmE, hlam, heig, hReq` are carried for
+the eventual proof (the bottleneck regime). -/
+lemma B2prime_le_RHS (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
+    (∑ i : V, ∑ j : V,
+        if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
+      ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
+  sorry
+
+/-- **Regime (ii): `Required > 0`.** The bottleneck regime, now factored as `T ≤ B2′ ≤ RHS`:
+`triEnergy_le_B2prime` (sorry-free, the `t_e ≤ min−1` step) chained with `B2prime_le_RHS` (the single
+remaining open inequality `gap = λ₂G − B2′ ≥ 0`). The open content is thus pinned to `B2prime_le_RHS`
+— the TYPE A extremality bound (`gap/eff ≥ 1/3`); TYPE B is closed structurally
+(`conjectureB_regime_two_typeB`). See `informal/conjecture_B_sorry_reduction.md`. -/
 lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
     (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
-    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
-  sorry
+    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
+  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig hReq)
 
 /-- **Conjecture B — triangle-energy lift inequality.** For a unit Fiedler vector `f`
 (`L_G f = λ₂ f`, `λ₂ > 0`) and `mE = |E| > 0`:
