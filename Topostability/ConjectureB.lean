@@ -664,10 +664,34 @@ theorem aggregate_triangle_poincare_regular (f : V → ℝ) (lam : ℝ) (d : ℕ
     _ = (d : ℝ) * (2 * lam * Sf) := by rw [hquad]
     _ = 2 * lam * degQuad G f := by rw [hdq]; ring
 
+/-- **Regime (ii), TYPE B branch (sorry-free).** The path-bottleneck sub-regime of `Required > 0`.
+For a graph with a triangle-rich block `B` and a triangle-free path/stub (so the off-block triangle
+weights vanish, `hoff`, and the in-block weight is `≤ W`, `hwt`) and block flatness `hflat`
+(`D_block ≤ Cflat·λ²`, the `Paper16.poincare_on_block` output), the triangle energy obeys
+`T ≤ (W·Cflat)·λ²` (`typeB_triEnergy_bound`); the closing hypothesis `hclose` is the `T-bound ≤ RHS`
+inequality (`(W·Cflat)λ² ≤ RHS`, encoding `RHS = Θ(λ) ≥ O(λ²)` for the bottleneck `λ`). Chaining the
+two gives the regime-(ii) conclusion. This formally connects the TYPE B branch of regime (ii) to the
+proved block lemmas; the general `conjectureB_regime_two` (TYPE A ∪ TYPE B, no structural hypotheses)
+remains open — its obstruction is the TYPE A extremality bound `gap/eff ≥ 1/3`
+(`informal/CONJECTURE_B_STATUS.md` §10). -/
+theorem conjectureB_regime_two_typeB (f : V → ℝ) (B : Finset V) (W Cflat lam mE : ℝ)
+    (hW : 0 ≤ W)
+    (hoff : ∀ i j, G.Adj i j → ¬ (i ∈ B ∧ j ∈ B) →
+        (G.neighborFinset i ∩ G.neighborFinset j).card = 0)
+    (hwt : ∀ i j, G.Adj i j → i ∈ B → j ∈ B →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ W)
+    (hflat : (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (f i - f j) ^ 2 else 0)
+        ≤ Cflat * lam ^ 2)
+    (hclose : (W * Cflat) * lam ^ 2 ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE)) :
+    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
+  le_trans (typeB_triEnergy_bound G f B W Cflat lam hW hoff hwt hflat) hclose
+
 /-- **Regime (ii): `Required > 0` (OPEN).** The bottleneck regime. Empirically the slack
 `Deficit − Required = RHS − T` stays positive with `Deficit/Required ≥ 1.7`; no closed-form
 proof yet (every edge/apex-local bound is either invalid on the bottleneck edges or too
-loose on the dense edges — see the `informal/` analyses). -/
+loose on the dense edges — see the `informal/` analyses). The TYPE B sub-regime is now formally
+reduced (`conjectureB_regime_two_typeB`); the remaining obstruction is TYPE A
+(`gap/eff ≥ 1/3`, see `informal/CONJECTURE_B_STATUS.md` §10). -/
 lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
     (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
