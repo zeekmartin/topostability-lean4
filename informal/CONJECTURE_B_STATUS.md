@@ -72,11 +72,29 @@ Split on `Required = λ₂(λ₂ + S²/m − fᵀDf)`; `277 + 226 + 77 = 580`, `
 
 - `eff_resist = R_aa+R_bb−2R_ab = Σ_{k≥2}(φ_k(a)−φ_k(b))²/(μ_k−λ) > 0` is **proven** (Green's-function
   sum rule; `⟺ R₂ ≻ 0 ⟺ λ < γ`, Courant–Fischer). So `gap > 0 ⟺ gap/eff ≥ c₀ > 0`.
-- **Verified on every tested graph** (corpus + scaling + adversarial), `gap/eff ∈ [≈1.6, 10]`,
-  `min ≈ 1.6`. The boundary `λ/γ → 1` is **benign** (`gap/eff ≳ 5` there); the minimum `≈1.6` is an
-  **interior** phenomenon (small / strongly-asymmetric attachments).
-- `gap/eff` is **not** a finite resolvent invariant (needs higher moments); the prefactor lower bound
-  is the entire remaining content of TYPE A.
+- **Verified on every tested graph** (corpus + scaling + adversarial), `gap/eff ∈ [≈0.68, 17]`.
+- **`c₀` is persistent, `≈ 0.68`** (achieved by the degree-2-attachment family — see below), holding
+  **uniformly in `n`**. `gap/eff` is **not** a finite resolvent invariant (needs higher moments).
+
+### Proof-strategy split — *attempted and refuted* (see `conjecture_B_typeA_asymptotic_proof.md`)
+
+A natural split was tried — **(a) asymptotic** (`n ≥ n₀`: `gap/eff ≥ 5` via `min(d_a,d_b) → ∞`,
+`f_a → 0`, `C_attach → 0`, `gap → R″ > 0`) plus **(b) finite** check (`n < n₀ ≈ 25`). **Both halves
+fail:**
+
+- The asymptotic mechanism is **false**: `C_attach = O(1)` (not `→ 0`; `f_a·d_a = O(1)` since
+  `f_a ~ x/γ`), and `gap → 0` in the dense regime (`R″` and `C_attach` cancel) — not `gap → R″`.
+- The finite check is **impossible**: the **minimizers persist at all `n`** — fixing the attachment
+  degree low (`d = 2,3,4`) on a growing dense core gives `gap/eff → g(d)` (`g(2) ≈ 0.68`, `g(3) ≈ 1.20`,
+  `g(4) ≈ 1.63`), *stable* as `n → ∞`. There is no `n₀` above which `gap/eff ≥ 5`.
+
+**Corrected extremal family:** `v₀` attached to two **low-degree** core vertices (`min(d_a,d_b)` fixed)
+inside an otherwise dense core. There `gap → const ≈ 1.3 > 0` (nearly degree-independent) and
+`eff → const`, so `gap/eff → g(min-degree)`, `inf ≈ 0.68` at degree 2 — **persistent, genuine TYPE A**
+(`f_v₀² ≈ 0.66`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary. **`gap > 0` holds
+throughout** (low-degree family `gap → 1.3 > 0`; dense family `gap → 0⁺ = c(q)·n/m`); only the *ratio*
+dips to `≈ 0.68`. This low-degree-attachment family — `gap → const > 0` with fixed `d`, `n → ∞` — is
+the genuine target for a closed-form bound.
 
 **The three `sorry`s** (`ConjectureB.lean`):
 
