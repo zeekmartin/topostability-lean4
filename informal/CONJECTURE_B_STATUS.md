@@ -34,7 +34,7 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
   block-flatness input); the regime-(ii) conclusion for the TYPE B branch is now connected sorry-free
   via `conjectureB_regime_two_typeB`.
 
-**The 30 sorry-free theorems** (`ConjectureB.lean`, 24 + `Paper16.lean`, 6):
+**The 32 sorry-free theorems** (`ConjectureB.lean`, 26 + `Paper16.lean`, 6):
 
 `ConjectureB.lean` — `triEnergy_diag_corr`, `triEnergy_sub_two_lam_degQuad`,
 `adjMatrix_mulVec_fiedler`, `adjSq_mulVec_fiedler`, `quadForm_adjSq_eq_normSq`,
@@ -42,9 +42,10 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `quadForm_deg_adjMatrix_fiedler`, `neighbor_dirichlet_identity`, `lapMatrix_mulVec_sq`,
 `lapMatrix_mulVec_sum_zero`, `quadForm_weighted_laplacian`, `adjMatrix_mulVec_sum`,
 `lagrange_identity`, `sum_sq_mul_card_sub_sq`, `B2prime_min_decomp`,
-`triCount_le_min_degree_sub_one`, `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`,
-`conjectureB_regime_two_typeB`, `aggregate_triangle_poincare_regular`, `conjectureB_lift` (reduction;
-closed modulo the two regime sorrys).
+`triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
+`triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
+`aggregate_triangle_poincare_regular`, `conjectureB_lift` (reduction; closed modulo the two regime
+sorrys).
 
 `Paper16.lean` — `poincare_on_block`, `block_gap`, `block_gap_lower`, `quadform_edge_split`,
 `lapQuadForm_edge_split`, `block_fiedler_energy`.
@@ -109,9 +110,9 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 
 | `sorry` | statement | obstruction |
 |---|---|---|
-| `aggregate_triangle_poincare` (595) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular (holds 277/277; regular proved) |
-| `conjectureB_regime_two` (695) | `T ≤ 2λ(2fᵀDf−λ−S²/m)`, `Required>0` | **TYPE A only** (TYPE B branch now connected — see below); obstruction = TYPE A `gap/eff ≥ 1/3` (§10) |
-| `conjectureB` (726) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (not yet formalised) |
+| `aggregate_triangle_poincare` (641) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular (holds 277/277; regular proved) |
+| `conjectureB_regime_two` (741) | `T ≤ 2λ(2fᵀDf−λ−S²/m)`, `Required>0` | **TYPE A only** (TYPE B branch now connected — see below); obstruction = TYPE A `gap/eff ≥ 1/3` (§10) |
+| `conjectureB` (772) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (not yet formalised) |
 
 **TYPE B branch of regime (ii) — now formally connected (sorry-free):**
 `conjectureB_regime_two_typeB` derives the regime-(ii) conclusion from the proved block lemmas
@@ -232,8 +233,10 @@ min, TASKS 1–3] `= 1/3`.
 
 ### Remaining rigour (3 items)
 
-1. **`O(1/N)` Fiedler correction** in TASK 4C (`δ` is leading-order; sign certain, magnitude
-   `→ 8/(3N²)`).
+1. **`O(1/N)` Fiedler correction** in TASK 4C — **resolved**: the Fiedler does *not* perturb at all.
+   `eigenpair_invariance_equal_values` (Lean, sorry-free) proves `f, λ` are *exactly* invariant under
+   deletion of an edge between equal-Fiedler vertices, so `δ_exact` is an exact finite-`N` formula
+   (`conjecture_B_typeA_delta_rigor.md`); only a finite algebraic sign bound on it remains.
 2. **Asymmetric ports** (`d_a ≠ d_b`): TASKS 1–2 generalised (numerically `≥ 1/3`, §10 scan).
 3. **TYPE A invariance under the moves** (each completion step keeps `λ < γ`, `f_v₀²` bounded):
    observed, to be proved.

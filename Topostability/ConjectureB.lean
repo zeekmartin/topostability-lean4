@@ -531,6 +531,52 @@ lemma triCount_le_min_degree_sub_one {i j : V} (hij : G.Adj i j) :
   simp only [triCount]
   omega
 
+/-- Row form of the Laplacian action (generic graph): `(L_H g)_x = Σ_u [x∼u](g_x − g_u)`. -/
+lemma lapMatrix_mulVec_row (H : SimpleGraph V) [DecidableRel H.Adj] (g : V → ℝ) (x : V) :
+    (H.lapMatrix ℝ).mulVec g x = ∑ u : V, if H.Adj x u then (g x - g u) else 0 := by
+  have hLDA : H.lapMatrix ℝ = H.degMatrix ℝ - H.adjMatrix ℝ := rfl
+  rw [hLDA, Matrix.sub_mulVec, Pi.sub_apply]
+  rw [show (H.degMatrix ℝ).mulVec g x = (H.degree x : ℝ) * g x from by
+    simp [SimpleGraph.degMatrix, Matrix.mulVec_diagonal]]
+  rw [SimpleGraph.adjMatrix_mulVec_apply]
+  rw [show (∑ u : V, if H.Adj x u then (g x - g u) else 0)
+      = ∑ u ∈ H.neighborFinset x, (g x - g u) from by
+    rw [SimpleGraph.neighborFinset_eq_filter, Finset.sum_filter]]
+  rw [Finset.sum_sub_distrib, Finset.sum_const, SimpleGraph.card_neighborFinset_eq_degree,
+      nsmul_eq_mul]
+
+/-- **Eigenpair invariance under equal-value edge deletion.** If `f` is a Laplacian eigenvector
+of `G` with eigenvalue `lam`, `f i = f j`, and `G'` is `G` with the single edge `{i,j}` removed
+(its adjacency is `G.Adj a b ∧ s(a,b) ≠ s(i,j)`), then `f` is *still* an eigenvector of `G'` with
+the **same** eigenvalue: `L_{G'} f = lam • f`. (Each row of `L f` is unchanged — deleting the edge
+`{i,j}` drops, at `i`, the degree term `−f i` and the neighbour term `+f j`, which cancel since
+`f i = f j`; symmetrically at `j`; all other rows are untouched.) This is the exact-invariance
+fact underlying the TYPE A bulk-rigidity step: deleting interior bulk edges between equal-Fiedler
+vertices leaves the Fiedler pair fixed (`informal/conjecture_B_typeA_delta_rigor.md`). -/
+theorem eigenpair_invariance_equal_values (G' : SimpleGraph V) [DecidableRel G'.Adj]
+    (f : V → ℝ) (lam : ℝ) (i j : V)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hfij : f i = f j)
+    (hdiff : ∀ a b : V, G'.Adj a b ↔ (G.Adj a b ∧ ¬ (s(a, b) = s(i, j)))) :
+    (G'.lapMatrix ℝ).mulVec f = lam • f := by
+  have hpt : ∀ x : V, (G'.lapMatrix ℝ).mulVec f x = (G.lapMatrix ℝ).mulVec f x := by
+    intro x
+    rw [lapMatrix_mulVec_row G' f x, lapMatrix_mulVec_row G f x]
+    refine Finset.sum_congr rfl fun u _ => ?_
+    by_cases hG : G.Adj x u
+    · by_cases hs : s(x, u) = s(i, j)
+      · have hG' : ¬ G'.Adj x u := by rw [hdiff]; tauto
+        rw [if_neg hG', if_pos hG]
+        rcases Sym2.eq_iff.mp hs with ⟨hx, hu⟩ | ⟨hx, hu⟩
+        · rw [hx, hu, hfij]; ring
+        · rw [hx, hu, hfij]; ring
+      · have hG' : G'.Adj x u := by rw [hdiff]; exact ⟨hG, hs⟩
+        rw [if_pos hG', if_pos hG]
+    · have hG' : ¬ G'.Adj x u := by rw [hdiff]; tauto
+      rw [if_neg hG', if_neg hG]
+  funext x
+  rw [hpt x, heig]
+
 /-- **TYPE B structural reduction: `T = T_block ≤ W · D_block`.**
 For the path-bottleneck regime (`informal/conjecture_B_typeB_path_bottleneck.md`): the triangle
 energy `T = triEnergy` is supported entirely on the dense block `B`, because the path/stub and the
