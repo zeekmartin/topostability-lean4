@@ -531,6 +531,61 @@ lemma triCount_le_min_degree_sub_one {i j : V} (hij : G.Adj i j) :
   simp only [triCount]
   omega
 
+/-- **TYPE B structural reduction: `T = T_block ≤ W · D_block`.**
+For the path-bottleneck regime (`informal/conjecture_B_typeB_path_bottleneck.md`): the triangle
+energy `T = triEnergy` is supported entirely on the dense block `B`, because the path/stub and the
+boundary edges are *triangle-free* (`hoff`: edges not fully inside `B` carry no common neighbours,
+`|N(i)∩N(j)| = 0`). Within `B` the triangle weight is bounded by `W` (`hwt`). Hence
+`T ≤ W · D_block`, where `D_block = Σ_{i,j∈B, i∼j}(f_i−f_j)²` is the within-block Dirichlet
+(double-sum) energy — the same object split out by `Paper16.quadform_edge_split`. Term-by-term. -/
+lemma triEnergy_le_block_dirichlet (f : V → ℝ) (B : Finset V) (W : ℝ)
+    (hoff : ∀ i j, G.Adj i j → ¬ (i ∈ B ∧ j ∈ B) →
+        (G.neighborFinset i ∩ G.neighborFinset j).card = 0)
+    (hwt : ∀ i j, G.Adj i j → i ∈ B → j ∈ B →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ W) :
+    triEnergy G f
+      ≤ W * (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (f i - f j) ^ 2 else 0) := by
+  rw [triEnergy, Finset.mul_sum]
+  refine Finset.sum_le_sum fun i _ => ?_
+  rw [Finset.mul_sum]
+  refine Finset.sum_le_sum fun j _ => ?_
+  by_cases hadj : G.Adj i j
+  · by_cases hB : i ∈ B ∧ j ∈ B
+    · rw [if_pos hadj, if_pos (show G.Adj i j ∧ i ∈ B ∧ j ∈ B from ⟨hadj, hB.1, hB.2⟩)]
+      exact mul_le_mul_of_nonneg_right (hwt i j hadj hB.1 hB.2) (sq_nonneg _)
+    · rw [if_pos hadj, hoff i j hadj hB, if_neg (fun h => hB ⟨h.2.1, h.2.2⟩)]
+      simp
+  · rw [if_neg hadj, if_neg (fun h => hadj h.1)]
+    simp
+
+/-- **TYPE B closure (theorem-shaped): `T ≤ (W·Cflat)·λ₂²`.**
+Combining the structural reduction with block flatness. Hypotheses encode the TYPE B structure of
+`informal/conjecture_B_typeB_path_bottleneck.md`:
+* `hoff`/`hwt` — `T` lives on the block with per-edge triangle weight `≤ W` (triangle-free path
+  and boundary);
+* `hflat` — **block flatness** `D_block ≤ Cflat·λ₂²`, the output of `Paper16.poincare_on_block`
+  applied to the induced subgraph `G[B]` (spectral gap `γ`): the resolvent bound forces the
+  within-block Dirichlet energy to `O(λ₂²/γ)` (the rigid-block mechanism — the junction flux is
+  `O(λ₂)` since the heavy high-gap block cannot follow the path).
+
+Conclusion: **`T ≤ (W·Cflat)·λ₂²`**, i.e. `T = O(λ₂²)`. With `RHS = Θ(λ₂)` (the path edge-lift
+variance, bounded below) this gives `T ≤ RHS` for `λ₂` small — Conjecture B on the TYPE B regime. -/
+theorem typeB_triEnergy_bound (f : V → ℝ) (B : Finset V) (W Cflat lam2 : ℝ)
+    (hW : 0 ≤ W)
+    (hoff : ∀ i j, G.Adj i j → ¬ (i ∈ B ∧ j ∈ B) →
+        (G.neighborFinset i ∩ G.neighborFinset j).card = 0)
+    (hwt : ∀ i j, G.Adj i j → i ∈ B → j ∈ B →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ W)
+    (hflat : (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (f i - f j) ^ 2 else 0)
+        ≤ Cflat * lam2 ^ 2) :
+    triEnergy G f ≤ (W * Cflat) * lam2 ^ 2 := by
+  have h1 := triEnergy_le_block_dirichlet G f B W hoff hwt
+  have h2 : W * (∑ i : V, ∑ j : V, if G.Adj i j ∧ i ∈ B ∧ j ∈ B then (f i - f j) ^ 2 else 0)
+      ≤ W * (Cflat * lam2 ^ 2) := mul_le_mul_of_nonneg_left hflat hW
+  calc triEnergy G f ≤ _ := h1
+    _ ≤ W * (Cflat * lam2 ^ 2) := h2
+    _ = (W * Cflat) * lam2 ^ 2 := by ring
+
 /-- **Aggregate triangle-Poincaré (OPEN).** `T ≤ λ₂·fᵀDf` (ordered: `T_ord ≤ 2λ₂·fᵀDf`).
 
 This is `Σ_c E_{G[N(c)]}(f) ≤ λ₂·Σ_c (Σ_{v∈N(c)} f_v²)` summed via the apex identity
