@@ -44,10 +44,10 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `lagrange_identity`, `sum_sq_mul_card_sub_sq`, `B2prime_min_decomp`,
 `triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
 `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
-`triEnergy_le_B2prime`, `conjectureB_regime_two` (now `le_trans` of `triEnergy_le_B2prime` +
-`B2prime_le_RHS`), `aggregate_triangle_poincare_regular`, `conjectureB_lift` (now the uniform `B2′`
-route — closed modulo the **single** sorry `B2prime_le_RHS`; `#print axioms` confirms it no longer
-depends on `aggregate_triangle_poincare`).
+`triEnergy_le_B2prime` (off-chain, `T ≤ B2′`), `conjectureB_regime_two` (now `= triEnergy_le_RHS`),
+`aggregate_triangle_poincare_regular`, `conjectureB_lift` (now the **direct `T ≤ λ₂G` route** —
+`= triEnergy_le_RHS`, closed modulo the **single** sorry `triEnergy_le_RHS`, whose extremizer is the
+complete graph `K_n`).
 
 `Paper16.lean` — `poincare_on_block`, `block_gap`, `block_gap_lower`, `quadform_edge_split`,
 `lapQuadForm_edge_split`, `block_fiedler_energy`.
@@ -112,18 +112,24 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 
 | `sorry` | statement | obstruction |
 |---|---|---|
-| `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | Regime 1 irregular — **now an independent off-chain result** (regular case proved); *not used* by `conjectureB_lift` |
-| **`B2prime_le_RHS` (769)** | `B2′ ≤ RHS` (= `gap ≥ 0`, **unconditional**) | **the single sorry of `conjectureB_lift`**; TYPE A obstruction (`gap/eff ≥ 1/3`); TYPE B closed via `_typeB` |
-| `conjectureB` (808) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
+| `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | independent off-chain (does *not* prove the `K_n` regular case — `K_n` is Required>0, the bound overshoots) |
+| **`triEnergy_le_RHS` (772)** | `T ≤ 2λ(2fᵀDf−λ−S²/m)` = **direct `T ≤ λ₂G`** | **the single sorry of `conjectureB_lift`**; extremizer = complete graph `K_n` (equality) |
+| `conjectureB` (811) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
-**`conjectureB_lift` now depends on EXACTLY ONE sorry — `B2prime_le_RHS`** (`#print axioms` verified;
-`conjecture_B_sorry_reduction.md`). It is restructured to the **uniform `B2′` route** with no regime
-split: `conjectureB_lift = le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)`, where
-`triEnergy_le_B2prime` (sorry-free) is `T ≤ B2′` and `B2prime_le_RHS` (now *unconditional* — `gap ≥ 0`
-holds for all graphs) is the only remaining inequality. **`aggregate_triangle_poincare` is no longer on
-this chain** (kept as an independent stronger result, regular case proved). `conjectureB_regime_two` is
-likewise `le_trans (triEnergy_le_B2prime) (B2prime_le_RHS)` (sorry-free modulo `B2prime_le_RHS`); the
-TYPE B branch is separately closed by `conjectureB_regime_two_typeB`.
+**`conjectureB_lift` depends on EXACTLY ONE sorry — `triEnergy_le_RHS`**, the *direct* `T ≤ λ₂G`
+(`conjectureB_lift = triEnergy_le_RHS`, one step; `conjecture_B_T_direct_restructure.md`). This replaces
+the earlier `B2′` route: `B2′ ≤ λ₂G` had its hard case at the deg2+dense **bottleneck** (a `B2′`
+artifact — `min−1` over-counts the `t_e = 0` edges), whereas the direct `T ≤ λ₂G` has its extremizer at
+the **complete graph `K_n`** (equality, benign). `triEnergy_le_B2prime` (sorry-free, `T ≤ B2′`) and
+`aggregate_triangle_poincare` (open) are kept **off-chain**. `conjectureB_regime_two` is likewise
+`= triEnergy_le_RHS`; TYPE B is separately closed by `conjectureB_regime_two_typeB`.
+
+*Honest caveat (`conjecture_B_T_direct_restructure.md`):* the "regular case proved + irregularity slack"
+route does **not** work — `aggregate_triangle_poincare_regular` does not cover `K_n` (Required>0,
+overshoots), and `slack = 1 − T/(λ₂G)` is *not* driven by irregularity (regular graphs span slack
+`0–0.998`; slack vanishes only at `K_n`, by density). The regular case reduces to `λ₂ + S²/m ≤ d+1`; the
+general case needs a *completeness*-monotonicity (`δ`/`eigenpair_invariance_equal_values`), not an
+irregularity bound.
 
 The graph statement `conjectureB` carries the *orthogonal* projected-Fiedler lift-reduction sorry
 (Rayleigh of `T(G)` → the energy inequality `conjectureB_lift`); once that is formalised, `conjectureB`

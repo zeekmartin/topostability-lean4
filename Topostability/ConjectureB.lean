@@ -739,10 +739,12 @@ theorem conjectureB_regime_two_typeB (f : V → ℝ) (B : Finset V) (W Cflat lam
     triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
   le_trans (typeB_triEnergy_bound G f B W Cflat lam hW hoff hwt hflat) hclose
 
-/-- **`T ≤ B2′` (sorry-free).** Summing the per-edge triangle bound
+/-- **`T ≤ B2′` (sorry-free, independent).** Summing the per-edge triangle bound
 `triCount ≤ min(d_a,d_b)−1` (`triCount_le_min_degree_sub_one`): the triangle energy is bounded by
 the triangle-free degree energy `B2′ = Σ_{i,j}[i∼j](min(d_i,d_j)−1)(f_i−f_j)²` (ordered double sum).
-This is the first, now-formalised, step of the regime-(ii) chain `T ≤ B2′ ≤ RHS`. -/
+The `B2′` relaxation is *off* the main `conjectureB_lift` chain (which now uses the direct
+`triEnergy_le_RHS`), because `B2′ ≤ λ₂G` is artificially hard on the deg2+dense bottleneck; this lemma
+is kept as the standalone relaxation `T ≤ B2′` (`informal/conjecture_B_true_T_vs_B2prime.md`). -/
 lemma triEnergy_le_B2prime (f : V → ℝ) :
     triEnergy G f
       ≤ ∑ i : V, ∑ j : V,
@@ -758,31 +760,30 @@ lemma triEnergy_le_B2prime (f : V → ℝ) :
     exact_mod_cast triCount_le_min_degree_sub_one G h
   · rw [if_neg h, if_neg h]
 
-/-- **`B2′ ≤ RHS` — the remaining open content of regime (ii) (the TYPE A obstruction, `gap ≥ 0`).**
-`B2′ = Σ_{i,j}[i∼j](min(d_i,d_j)−1)(f_i−f_j)² ≤ 2λ(2fᵀDf − λ − S²/m)`. Equivalently `gap = λ₂G − B2′ ≥ 0`
-(the triangle-free degree inequality). **This is the precise missing step.** TYPE B is *closed*
-structurally (`conjectureB_regime_two_typeB`, via block flatness); the open case is TYPE A
-(`gap/eff ≥ 1/3` with `eff > 0`, the extremality program — `informal/CONJECTURE_B_STATUS.md` §10,
-`informal/conjecture_B_sorry_reduction.md`). **Unconditional** (no `Required`-sign hypothesis): `gap ≥ 0`
-holds for *all* graphs (`RHS = 2λ₂G ≥ λ₂G ≥ B2′`), so this single inequality covers both regimes and
-is the *only* sorry the lift inequality `conjectureB_lift` depends on. -/
-lemma B2prime_le_RHS (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
+/-- **`T ≤ λ₂G` — the direct triangle-energy inequality (the single open content of the lift).**
+`triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/m) = 2·λ₂G`. **This is the *true* target** (Conjecture B reduces to
+it), restructured away from the `B2′` relaxation: the *true extremizer is the complete graph `K_n`*
+(equality `T = λ₂G`, dense/regular), whereas the `B2′`-relaxed sorry `B2′ ≤ λ₂G` had its hard case at
+the **deg2+dense bottleneck** — a *`B2′` artifact* (`min−1` over-counts the `t_e = 0` bottleneck edges
+by `Θ(n)`; for the true `T`, those edges contribute nothing and `T/(λ₂G) ≈ 0.3` there). See
+`informal/conjecture_B_true_T_vs_B2prime.md`. `T ≤ B2′` (`triEnergy_le_B2prime`, sorry-free) still
+gives the relaxation when wanted, but the *direct* `T`-route is better-conditioned (hard case = the
+benign `K_n`, not the bottleneck). Holds on all 580+ tested graphs (0 violations). -/
+lemma triEnergy_le_RHS (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    (∑ i : V, ∑ j : V,
-        if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
-      ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
+    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
   sorry
 
 /-- **Regime (ii): `Required > 0`.** The bottleneck regime, now factored as `T ≤ B2′ ≤ RHS`:
-`triEnergy_le_B2prime` (sorry-free, the `t_e ≤ min−1` step) chained with `B2prime_le_RHS` (the single
-remaining open inequality `gap = λ₂G − B2′ ≥ 0`). The open content is thus pinned to `B2prime_le_RHS`
-— the TYPE A extremality bound (`gap/eff ≥ 1/3`); TYPE B is closed structurally
-(`conjectureB_regime_two_typeB`). See `informal/conjecture_B_sorry_reduction.md`. -/
+it is `triEnergy_le_RHS` (the direct `T ≤ λ₂G`); the `hReq` hypothesis is no longer needed (the bound
+holds for all graphs). TYPE B is closed structurally (`conjectureB_regime_two_typeB`); the open content
+is `triEnergy_le_RHS`, whose extremizer is the complete graph `K_n`. See
+`informal/conjecture_B_true_T_vs_B2prime.md`. -/
 lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
     (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
     triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig)
+  triEnergy_le_RHS G f lam mE hmE hlam heig
 
 /-- **Conjecture B — triangle-energy lift inequality.** For a unit Fiedler vector `f`
 (`L_G f = λ₂ f`, `λ₂ > 0`) and `mE = |E| > 0`:
@@ -790,16 +791,18 @@ lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam
 
 This implies `λ₂(T(G)) ≤ λ₂(G)` (Conjecture B) via the projected Fiedler lift.
 
-**Proof (restructured): the uniform `B2′` route** — `T ≤ B2′ ≤ RHS`, no regime split. The first step
-`triEnergy_le_B2prime` (sorry-free) is the per-edge `t_e ≤ min(d_a,d_b)−1` bound; the second
-`B2prime_le_RHS` is the single open inequality `gap = λ₂G − B2′ ≥ 0` (the triangle-free degree
-inequality, holding for *all* graphs). So **`conjectureB_lift` depends on exactly one sorry,
-`B2prime_le_RHS`**. (The earlier proof split on `sign(Required)` and used `aggregate_triangle_poincare`
-for regime (i); that lemma is now an *independent* stronger result, no longer on this chain.) -/
+**Proof (restructured): the direct `T ≤ λ₂G` route** — `conjectureB_lift = triEnergy_le_RHS`, one
+step, no `B2′` intermediary and no regime split. The `B2′` relaxation (`T ≤ B2′ ≤ λ₂G`) was the *wrong*
+target: its hard case is the deg2+dense bottleneck (a `B2′` artifact where `min−1` over-counts
+`t_e = 0` edges), whereas the **direct** `T ≤ λ₂G` has its extremizer at the *complete graph* `K_n`
+(equality, dense/regular — benign). So `conjectureB_lift` depends on exactly one sorry,
+`triEnergy_le_RHS`. (`triEnergy_le_B2prime` is retained as an independent sorry-free result, and
+`aggregate_triangle_poincare` as an independent open result, both no longer on this chain;
+`informal/conjecture_B_true_T_vs_B2prime.md`.) -/
 theorem conjectureB_lift (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
     triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-  le_trans (triEnergy_le_B2prime G f) (B2prime_le_RHS G f lam mE hmE hlam heig)
+  triEnergy_le_RHS G f lam mE hmE hlam heig
 
 /-- **Conjecture B (graph statement).** For connected `G` with `T(G)` connected,
 `λ₂(T(G)) ≤ λ₂(G)`. Reduces to `conjectureB_lift` via the projected Fiedler lift
