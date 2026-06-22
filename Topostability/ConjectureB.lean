@@ -717,6 +717,84 @@ theorem aggregate_triangle_poincare_regular (f : V → ℝ) (lam : ℝ) (d : ℕ
     _ = (d : ℝ) * (2 * lam * Sf) := by rw [hquad]
     _ = 2 * lam * degQuad G f := by rw [hdq]; ring
 
+/-- **Regular case of the lift inequality `T ≤ λ₂G` (sorry-free, modulo `λ ≤ d+1`).**
+For a connected `d`-regular graph with unit Fiedler `f` (`‖f‖²=1`, `f ⊥ 1`), the *full* triangle-lift
+inequality holds: `triEnergy ≤ 2λ(2·degQuad − λ − degLin²/mE)`. Proof
+(`informal/conjecture_B_regular_PROOF.md`): `degQuad = d`, `degLin = 0` (regular + `f⊥1`); the per-edge
+bound `t_e ≤ d−1` gives `T ≤ (d−1)·(Dirichlet) = (d−1)·2λ`; and `(d−1)·2λ ≤ 2λ(2d−λ)` since `λ ≤ d+1`.
+The hypothesis `hlam : λ ≤ d+1` is the standard spectral bound (`μ₂(A) ≥ −1` by Cauchy interlacing on a
+`2×2` edge block `[[0,1],[1,0]]` with eigenvalues `±1`); it is left explicit here. This **strictly
+strengthens** `aggregate_triangle_poincare_regular` (`T ≤ 2λ·degQuad = 2λd`), which is insufficient in
+the dense regime `λ ∈ (d, d+1]` (`K_n`: `λ = d+1`). -/
+theorem triEnergy_le_RHS_regular (f : V → ℝ) (lam mE : ℝ) (d : ℕ)
+    (hreg : ∀ v : V, G.degree v = d)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hnorm : ∑ v : V, (f v) ^ 2 = 1)
+    (hperp : ∑ v : V, f v = 0)
+    (hlam0 : 0 ≤ lam)
+    (hlam : lam ≤ (d : ℝ) + 1) :
+    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
+  have hquad : (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) = 2 * lam := by
+    have h1 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = ∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v := by
+      rw [Matrix.toLinearMap₂'_apply']; rfl
+    have h2 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) / 2 := by
+      rw [SimpleGraph.lapMatrix_toLinearMap₂']
+    have h3 : (∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v) = lam := by
+      rw [heig]
+      have hh : (∑ v : V, f v * (lam • f) v) = lam * ∑ v : V, (f v) ^ 2 := by
+        rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun v _ => ?_
+        simp only [Pi.smul_apply, smul_eq_mul]; ring
+      rw [hh, hnorm, mul_one]
+    rw [h1, h3] at h2
+    linarith [h2]
+  have hdq : degQuad G f = (d : ℝ) := by
+    rw [degQuad]
+    have hc : (∑ v : V, (G.degree v : ℝ) * (f v) ^ 2) = ∑ v : V, (d : ℝ) * (f v) ^ 2 := by
+      refine Finset.sum_congr rfl fun v _ => ?_; rw [hreg v]
+    rw [hc, ← Finset.mul_sum, hnorm, mul_one]
+  have hdl : degLin G f = 0 := by
+    rw [degLin]
+    have hc : (∑ v : V, (G.degree v : ℝ) * f v) = ∑ v : V, (d : ℝ) * f v := by
+      refine Finset.sum_congr rfl fun v _ => ?_; rw [hreg v]
+    rw [hc, ← Finset.mul_sum, hperp, mul_zero]
+  have hcard : ∀ i j : V, G.Adj i j →
+      ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ (d : ℝ) - 1 := by
+    intro i j hadj
+    have hjmem : j ∈ G.neighborFinset i := by rw [SimpleGraph.mem_neighborFinset]; exact hadj
+    have hsub : G.neighborFinset i ∩ G.neighborFinset j ⊆ (G.neighborFinset i).erase j := by
+      intro x hx
+      simp only [Finset.mem_inter, SimpleGraph.mem_neighborFinset] at hx
+      simp only [Finset.mem_erase, SimpleGraph.mem_neighborFinset]
+      exact ⟨fun hxj => (G.ne_of_adj (hxj ▸ hx.2)) rfl, hx.1⟩
+    have hcle : (G.neighborFinset i ∩ G.neighborFinset j).card ≤ (G.neighborFinset i).card - 1 := by
+      calc (G.neighborFinset i ∩ G.neighborFinset j).card
+          ≤ ((G.neighborFinset i).erase j).card := Finset.card_le_card hsub
+        _ = (G.neighborFinset i).card - 1 := Finset.card_erase_of_mem hjmem
+    have hdeg : (G.neighborFinset i).card = d := by
+      rw [SimpleGraph.card_neighborFinset_eq_degree]; exact hreg i
+    rw [hdeg] at hcle
+    have hd1 : 1 ≤ d := by rw [← hdeg]; exact Finset.card_pos.mpr ⟨j, hjmem⟩
+    have hcast : ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ ((d - 1 : ℕ) : ℝ) := by
+      exact_mod_cast hcle
+    rwa [Nat.cast_sub hd1, Nat.cast_one] at hcast
+  have hTle : triEnergy G f
+      ≤ ((d : ℝ) - 1) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
+    rw [triEnergy, Finset.mul_sum]
+    refine Finset.sum_le_sum fun i _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun j _ => ?_
+    split_ifs with h
+    · exact mul_le_mul_of_nonneg_right (hcard i j h) (sq_nonneg _)
+    · simp
+  have hT : triEnergy G f ≤ ((d : ℝ) - 1) * (2 * lam) := by rw [← hquad]; exact hTle
+  rw [hdq, hdl]
+  have h0 : ((0 : ℝ)) ^ 2 / mE = 0 := by norm_num
+  rw [h0]
+  have hprod : 0 ≤ lam * ((d : ℝ) + 1 - lam) := mul_nonneg hlam0 (by linarith)
+  nlinarith [hT, hprod]
+
 /-- **Regime (ii), TYPE B branch (sorry-free).** The path-bottleneck sub-regime of `Required > 0`.
 For a graph with a triangle-rich block `B` and a triangle-free path/stub (so the off-block triangle
 weights vanish, `hoff`, and the in-block weight is `≤ W`, `hwt`) and block flatness `hflat`

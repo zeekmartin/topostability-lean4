@@ -30,16 +30,20 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 ## 3. Proven cases (Lean, sorry-free)
 
 - **All regular graphs** (Regime 1 base case): `aggregate_triangle_poincare_regular`.
-- **⭐ ALL regular graphs — the TRUE lift `T ≤ λ₂G` (complete paper proof, `conjecture_B_regular_PROOF.md`):**
-  `gap = λ(n−λ) − C` (`C = Σ_e t̄_e g_e²`, common-non-neighbour edge energy), `C ≤ (n−1−d)λ`
-  (`t̄_e ≤ n−1−d`), and `λ₂ ≤ d+1` (Cauchy interlacing: a `2×2` edge block `[[0,1],[1,0]]` gives
-  `μ₂(A) ≥ −1`) ⇒ `gap ≥ λ(d+1−λ) ≥ 0`, equality iff `K_n`. Covers the dense regime `λ∈(d,d+1]` that
-  `aggregate_triangle_poincare_regular` misses. Not yet in Lean (high-value target).
+- **⭐ ALL regular graphs — the TRUE lift `T ≤ λ₂G` (NOW IN LEAN, sorry-free modulo `λ ≤ d+1`):**
+  `triEnergy_le_RHS_regular` proves the full lift conclusion for connected `d`-regular `G` (unit
+  Fiedler `‖f‖²=1`, `f⊥1`) from the single explicit hypothesis `hlam : λ ≤ d+1`. Proof: `degQuad=d`,
+  `degLin=0`; `t_e ≤ d−1` ⇒ `T ≤ (d−1)·2λ`; then `(d−1)2λ ≤ 2λ(2d−λ)` via `λ≤d+1` (nlinarith). This
+  **strictly strengthens** `aggregate_triangle_poincare_regular` (`T ≤ 2λd`, insufficient for
+  `λ∈(d,d+1]`, e.g. `K_n`). The hypothesis `λ ≤ d+1` is the standard spectral bound (`μ₂(A) ≥ −1`,
+  Cauchy interlacing on a `2×2` edge block `[[0,1],[1,0]]`), left explicit (paper proof:
+  `conjecture_B_regular_PROOF.md`; the equivalent complement form is `gap = λ(n−λ) − C`,
+  `C = Σ_e t̄_e g_e² ≤ (n−1−d)λ`).
 - **TYPE B path-bottleneck:** `typeB_triEnergy_bound` (with the standard `poincare_on_block`
   block-flatness input); the regime-(ii) conclusion for the TYPE B branch is now connected sorry-free
   via `conjectureB_regime_two_typeB`.
 
-**The 34 sorry-free theorems** (`ConjectureB.lean`, 28 + `Paper16.lean`, 6):
+**The 35 sorry-free theorems** (`ConjectureB.lean`, 29 + `Paper16.lean`, 6):
 
 `ConjectureB.lean` — `triEnergy_diag_corr`, `triEnergy_sub_two_lam_degQuad`,
 `adjMatrix_mulVec_fiedler`, `adjSq_mulVec_fiedler`, `quadForm_adjSq_eq_normSq`,
@@ -49,6 +53,7 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `lagrange_identity`, `sum_sq_mul_card_sub_sq`, `B2prime_min_decomp`,
 `triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
 `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
+`triEnergy_le_RHS_regular` (regular lift, sorry-free modulo `λ≤d+1`),
 `triEnergy_le_B2prime` (off-chain, `T ≤ B2′`), `conjectureB_regime_two` (now `= triEnergy_le_RHS`),
 `aggregate_triangle_poincare_regular`, `conjectureB_lift` (now the **direct `T ≤ λ₂G` route** —
 `= triEnergy_le_RHS`, closed modulo the **single** sorry `triEnergy_le_RHS`, whose extremizer is the
