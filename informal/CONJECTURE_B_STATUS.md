@@ -123,7 +123,7 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 | `sorry` | statement | obstruction |
 |---|---|---|
 | `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | independent off-chain (does *not* prove the `K_n` regular case — `K_n` is Required>0, the bound overshoots) |
-| **`triEnergy_le_RHS` (772)** | `T ≤ 2λ(2fᵀDf−λ−S²/m)` = **direct `T ≤ λ₂G`** | **the single sorry of `conjectureB_lift`**; extremizer = complete graph `K_n` (equality) |
+| **`triEnergy_le_RHS` (772)** | `T ≤ 2λ(2fᵀDf−λ−S²/m)` = **direct `T ≤ λ₂G`** | ⚠️ **FALSE as stated (∀ eigenvector)** — fails for a *bad* Fiedler in a degenerate `λ₂`-eigenspace (star+clique, `conjecture_B_AB_minus_D.md`); needs **simple-`λ₂`** hyp or **existential** (best-Fiedler) form. Genuine (simple-`λ₂`) extremizer = `K_n` |
 | `conjectureB` (811) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
 **`conjectureB_lift` depends on EXACTLY ONE sorry — `triEnergy_le_RHS`**, the *direct* `T ≤ λ₂G`
