@@ -43,7 +43,7 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
   block-flatness input); the regime-(ii) conclusion for the TYPE B branch is now connected sorry-free
   via `conjectureB_regime_two_typeB`.
 
-**The 35 sorry-free theorems** (`ConjectureB.lean`, 29 + `Paper16.lean`, 6):
+**The 34 sorry-free theorems** (`ConjectureB.lean`, 28 + `Paper16.lean`, 6):
 
 `ConjectureB.lean` — `triEnergy_diag_corr`, `triEnergy_sub_two_lam_degQuad`,
 `adjMatrix_mulVec_fiedler`, `adjSq_mulVec_fiedler`, `quadForm_adjSq_eq_normSq`,
@@ -54,10 +54,9 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 `triCount_le_min_degree_sub_one`, `lapMatrix_mulVec_row`, `eigenpair_invariance_equal_values`,
 `triEnergy_le_block_dirichlet`, `typeB_triEnergy_bound`, `conjectureB_regime_two_typeB`,
 `triEnergy_le_RHS_regular` (regular lift, sorry-free modulo `λ≤d+1`),
-`triEnergy_le_B2prime` (off-chain, `T ≤ B2′`), `conjectureB_regime_two` (now `= triEnergy_le_RHS`),
-`aggregate_triangle_poincare_regular`, `conjectureB_lift` (now the **direct `T ≤ λ₂G` route** —
-`= triEnergy_le_RHS`, closed modulo the **single** sorry `triEnergy_le_RHS`, whose extremizer is the
-complete graph `K_n`).
+`triEnergy_le_B2prime` (off-chain, `T ≤ B2′`), `aggregate_triangle_poincare_regular`,
+`conjectureB_lift` (now **EXISTENTIAL**, `= triEnergy_le_RHS_exists` with `hTconn`; the old universal
+`triEnergy_le_RHS`/`conjectureB_regime_two` were FALSE on degenerate `λ₂` and are removed).
 
 `Paper16.lean` — `poincare_on_block`, `block_gap`, `block_gap_lower`, `quadform_edge_split`,
 `lapQuadForm_edge_split`, `block_fiedler_energy`.
@@ -123,16 +122,18 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 | `sorry` | statement | obstruction |
 |---|---|---|
 | `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | independent off-chain (does *not* prove the `K_n` regular case — `K_n` is Required>0, the bound overshoots) |
-| **`triEnergy_le_RHS` (772)** | `T ≤ 2λ(2fᵀDf−λ−S²/m)` = **direct `T ≤ λ₂G`** | ⚠️ **FALSE as stated (∀ eigenvector)** — fails for a *bad* Fiedler in a degenerate `λ₂`-eigenspace (star+clique, `conjecture_B_AB_minus_D.md`); needs **simple-`λ₂`** hyp or **existential** (best-Fiedler) form. Genuine (simple-`λ₂`) extremizer = `K_n` |
+| **`triEnergy_le_RHS_exists` (858)** | `(hTconn) → ∃ unit Fiedler f: triEnergy ≤ RHS` (**existential** lift) | the corrected lift content (replaces the FALSE universal `triEnergy_le_RHS`); needs `hTconn` (else `K₁₂+30` pendants: `max gap < 0`, but `triangleGraph` disconnected — out of scope). `conjectureB_lift` = this (sorry-free wrapper) |
 | `conjectureB` (811) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
-**`conjectureB_lift` depends on EXACTLY ONE sorry — `triEnergy_le_RHS`**, the *direct* `T ≤ λ₂G`
-(`conjectureB_lift = triEnergy_le_RHS`, one step; `conjecture_B_T_direct_restructure.md`). This replaces
-the earlier `B2′` route: `B2′ ≤ λ₂G` had its hard case at the deg2+dense **bottleneck** (a `B2′`
-artifact — `min−1` over-counts the `t_e = 0` edges), whereas the direct `T ≤ λ₂G` has its extremizer at
-the **complete graph `K_n`** (equality, benign). `triEnergy_le_B2prime` (sorry-free, `T ≤ B2′`) and
-`aggregate_triangle_poincare` (open) are kept **off-chain**. `conjectureB_regime_two` is likewise
-`= triEnergy_le_RHS`; TYPE B is separately closed by `conjectureB_regime_two_typeB`.
+**`conjectureB_lift` is now the EXISTENTIAL lift, depending on the single sorry `triEnergy_le_RHS_exists`**
+(`conjectureB_lift = triEnergy_le_RHS_exists` with `hTconn`; `conjecture_B_AB_minus_D.md`). The earlier
+*universal* `triEnergy_le_RHS`/`conjectureB_regime_two` (`∀ Fiedler, T ≤ λ₂G`) were discovered **FALSE**
+on degenerate `λ₂` (star+clique: bad eigenvector gives `gap < 0`) and **removed**. The correct content
+is: *some* unit Fiedler satisfies `T ≤ λ₂G` (`max gap ≥ 0` over the eigenspace), conditioned on
+`hTconn` (triangleGraph connected — else even the existential fails, but `λ₂(T(G))=0` trivially there).
+`triEnergy_le_B2prime` (`T ≤ B2′`) and `aggregate_triangle_poincare` (open) are off-chain; TYPE B is
+separately closed by `conjectureB_regime_two_typeB`. The complete-graph `K_n` remains the simple-`λ₂`
+extremizer.
 
 *Honest caveat (`conjecture_B_T_direct_restructure.md`):* the "regular case proved + irregularity slack"
 route does **not** work — `aggregate_triangle_poincare_regular` does not cover `K_n` (Required>0,
@@ -277,6 +278,7 @@ structure.
   leading-order); assembly validated (0/3318). `eff > 0` proven. **Remaining: 3 rigour items**
   (`O(1/N)` correction, asymmetric ports, TYPE A invariance) — analytic, not structural.
 - **Regime 1:** reduced to `aggregate_triangle_poincare` (`T ≤ λ₂fᵀDf`); regular case proved.
-- **Lean:** three `sorry`s remain (`aggregate_triangle_poincare`, `conjectureB_regime_two`,
-  `conjectureB`), mapped in §6. The extremality program supplies the paper proof for the TYPE A part of
-  `conjectureB_regime_two`.
+- **Lean:** three `sorry`s remain (`aggregate_triangle_poincare`, `triEnergy_le_RHS_exists`,
+  `conjectureB`), mapped in §6. `triEnergy_le_RHS_exists` (existential lift, `hTconn`) replaced the
+  FALSE universal `triEnergy_le_RHS`/`conjectureB_regime_two`. `triEnergy_le_RHS_regular` proves the
+  regular case (sorry-free modulo `λ≤d+1`).

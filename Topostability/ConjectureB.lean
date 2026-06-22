@@ -838,49 +838,48 @@ lemma triEnergy_le_B2prime (f : V → ℝ) :
     exact_mod_cast triCount_le_min_degree_sub_one G h
   · rw [if_neg h, if_neg h]
 
-/-- **`T ≤ λ₂G` — the direct triangle-energy inequality (the single open content of the lift).**
-`triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/m) = 2·λ₂G`. **This is the *true* target** (Conjecture B reduces to
-it), restructured away from the `B2′` relaxation: the *true extremizer is the complete graph `K_n`*
-(equality `T = λ₂G`, dense/regular), whereas the `B2′`-relaxed sorry `B2′ ≤ λ₂G` had its hard case at
-the **deg2+dense bottleneck** — a *`B2′` artifact* (`min−1` over-counts the `t_e = 0` bottleneck edges
-by `Θ(n)`; for the true `T`, those edges contribute nothing and `T/(λ₂G) ≈ 0.3` there). See
-`informal/conjecture_B_true_T_vs_B2prime.md`. `T ≤ B2′` (`triEnergy_le_B2prime`, sorry-free) still
-gives the relaxation when wanted, but the *direct* `T`-route is better-conditioned (hard case = the
-benign `K_n`, not the bottleneck). Holds on all 580+ tested graphs (0 violations). -/
-lemma triEnergy_le_RHS (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
+/-- **The lift inequality `T ≤ λ₂G` — EXISTENTIAL form (the universal form is FALSE).**
+The *universal* statement `∀ f, L_G f = λf → triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/m)` is **FALSE** when
+`λ₂` is degenerate (multiplicity > 1): on `K_d` + pendants (star+clique) a *badly-chosen* Fiedler in the
+high-multiplicity `λ₂`-eigenspace gives `triEnergy > λ₂G` (`informal/conjecture_B_AB_minus_D.md`,
+`K₁₂+15`: gap `−1.06`). What Conjecture B actually needs (via the projected Fiedler lift, which it may
+*choose* from the eigenspace) is the **existential**: among unit Fiedler vectors for `λ`, SOME satisfies
+the bound. Verified on all tested graphs: `max gap ≥ 0` over the `λ₂`-eigenspace (a good Fiedler always
+exists). The hypotheses provide a witness unit Fiedler `f₀` (the eigenspace is nonempty). NB: the
+*regular* case is special — `triEnergy_le_RHS_regular` proves the bound for *every* eigenvector (the
+universal form holds there, `gap ≥ λ(d+1−λ) ≥ 0`); degeneracy only breaks the universal form for
+*irregular* graphs.
+
+**`hTconn` (triangleGraph connected) is essential** and matches Conjecture B's scope: without it the
+existential is *also* false — on `K_d` + many pendants (`K₁₂+30`) the pendant edges lie in no triangle,
+so `triangleGraph G` is disconnected and `max gap < 0` over the whole eigenspace; but there
+`λ₂(T(G)) = 0 ≤ λ₂(G)` trivially (outside the conjecture). With `triangleGraph G` connected,
+`max gap ≥ 0` on all tested graphs. -/
+theorem triEnergy_le_RHS_exists (lam mE : ℝ)
+    (hTconn : (triangleGraph G).Connected)
+    (f₀ : V → ℝ) (hf₀norm : ∑ v : V, (f₀ v) ^ 2 = 1) (hf₀perp : ∑ v : V, f₀ v = 0)
+    (hf₀eig : (G.lapMatrix ℝ).mulVec f₀ = lam • f₀) :
+    ∃ f : V → ℝ, (∑ v : V, (f v) ^ 2 = 1) ∧ (∑ v : V, f v = 0)
+      ∧ (G.lapMatrix ℝ).mulVec f = lam • f
+      ∧ triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
   sorry
 
-/-- **Regime (ii): `Required > 0`.** The bottleneck regime, now factored as `T ≤ B2′ ≤ RHS`:
-it is `triEnergy_le_RHS` (the direct `T ≤ λ₂G`); the `hReq` hypothesis is no longer needed (the bound
-holds for all graphs). TYPE B is closed structurally (`conjectureB_regime_two_typeB`); the open content
-is `triEnergy_le_RHS`, whose extremizer is the complete graph `K_n`. See
-`informal/conjecture_B_true_T_vs_B2prime.md`. -/
-lemma conjectureB_regime_two (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
-    (hReq : degQuad G f < lam + (degLin G f) ^ 2 / mE) :
-    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-  triEnergy_le_RHS G f lam mE hmE hlam heig
-
-/-- **Conjecture B — triangle-energy lift inequality.** For a unit Fiedler vector `f`
-(`L_G f = λ₂ f`, `λ₂ > 0`) and `mE = |E| > 0`:
-`T ≤ λ₂·(fᵀQf − S²/m)`, ordered form `T_ord ≤ 2λ₂(2fᵀDf − λ₂ − S²/mE)`.
-
-This implies `λ₂(T(G)) ≤ λ₂(G)` (Conjecture B) via the projected Fiedler lift.
-
-**Proof (restructured): the direct `T ≤ λ₂G` route** — `conjectureB_lift = triEnergy_le_RHS`, one
-step, no `B2′` intermediary and no regime split. The `B2′` relaxation (`T ≤ B2′ ≤ λ₂G`) was the *wrong*
-target: its hard case is the deg2+dense bottleneck (a `B2′` artifact where `min−1` over-counts
-`t_e = 0` edges), whereas the **direct** `T ≤ λ₂G` has its extremizer at the *complete graph* `K_n`
-(equality, dense/regular — benign). So `conjectureB_lift` depends on exactly one sorry,
-`triEnergy_le_RHS`. (`triEnergy_le_B2prime` is retained as an independent sorry-free result, and
-`aggregate_triangle_poincare` as an independent open result, both no longer on this chain;
-`informal/conjecture_B_true_T_vs_B2prime.md`.) -/
-theorem conjectureB_lift (f : V → ℝ) (lam mE : ℝ) (hmE : 0 < mE) (hlam : 0 < lam)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
-  triEnergy_le_RHS G f lam mE hmE hlam heig
+/-- **Conjecture B — triangle-energy lift inequality (EXISTENTIAL).** Given a unit Fiedler `f₀`
+(`L_G f₀ = λ f₀`, `‖f₀‖² = 1`, `f₀ ⊥ 1`), there exists a unit Fiedler `f` for the same `λ` with
+`triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/mE)` (`= 2·λ₂G`). This is the form that implies `λ₂(T(G)) ≤ λ₂(G)`
+(Conjecture B) via the projected Fiedler lift — Courant–Fischer on `T(G)` needs *one* good test
+vector, so *one* good Fiedler suffices. The earlier *universal* `conjectureB_lift` (`∀ f`) was FALSE on
+degenerate `λ₂` (`triEnergy_le_RHS_exists`); this existential form is the correct replacement, and
+`conjectureB_lift` depends on the single sorry `triEnergy_le_RHS_exists`. The `hTconn` hypothesis
+(triangleGraph connected) matches Conjecture B's scope and is essential (see `triEnergy_le_RHS_exists`). -/
+theorem conjectureB_lift (lam mE : ℝ)
+    (hTconn : (triangleGraph G).Connected)
+    (f₀ : V → ℝ) (hf₀norm : ∑ v : V, (f₀ v) ^ 2 = 1) (hf₀perp : ∑ v : V, f₀ v = 0)
+    (hf₀eig : (G.lapMatrix ℝ).mulVec f₀ = lam • f₀) :
+    ∃ f : V → ℝ, (∑ v : V, (f v) ^ 2 = 1) ∧ (∑ v : V, f v = 0)
+      ∧ (G.lapMatrix ℝ).mulVec f = lam • f
+      ∧ triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) :=
+  triEnergy_le_RHS_exists G lam mE hTconn f₀ hf₀norm hf₀perp hf₀eig
 
 /-- **Conjecture B (graph statement).** For connected `G` with `T(G)` connected,
 `λ₂(T(G)) ≤ λ₂(G)`. Reduces to `conjectureB_lift` via the projected Fiedler lift
