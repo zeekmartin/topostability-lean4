@@ -30,6 +30,11 @@ Unit Fiedler `f` (`L_G f = λ₂ f`); `g_e = f_a−f_b`, `h_e = f_a+f_b`, `S = �
 ## 3. Proven cases (Lean, sorry-free)
 
 - **All regular graphs** (Regime 1 base case): `aggregate_triangle_poincare_regular`.
+- **⭐ ALL regular graphs — the TRUE lift `T ≤ λ₂G` (complete paper proof, `conjecture_B_regular_PROOF.md`):**
+  `gap = λ(n−λ) − C` (`C = Σ_e t̄_e g_e²`, common-non-neighbour edge energy), `C ≤ (n−1−d)λ`
+  (`t̄_e ≤ n−1−d`), and `λ₂ ≤ d+1` (Cauchy interlacing: a `2×2` edge block `[[0,1],[1,0]]` gives
+  `μ₂(A) ≥ −1`) ⇒ `gap ≥ λ(d+1−λ) ≥ 0`, equality iff `K_n`. Covers the dense regime `λ∈(d,d+1]` that
+  `aggregate_triangle_poincare_regular` misses. Not yet in Lean (high-value target).
 - **TYPE B path-bottleneck:** `typeB_triEnergy_bound` (with the standard `poincare_on_block`
   block-flatness input); the regime-(ii) conclusion for the TYPE B branch is now connected sorry-free
   via `conjectureB_regime_two_typeB`.
