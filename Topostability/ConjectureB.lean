@@ -930,6 +930,26 @@ theorem aggregate_triangle_poincare_typeA (P : V → V → Prop) (f : V → ℝ)
     (triEnergyOn_le G (fun i j => ¬ P i j) f (ΔH : ℝ) hcore)
     hcond
 
+/-- **Generalized partition bound (no `sorry`).** For any per-class triangle-count bounds `Cp` (ports),
+`Cc` (core) and any target `B`, the port/core split gives `triEnergy ≤ B` as soon as the scalar
+condition `Cp·D_port + Cc·D_core ≤ B` holds. Generalizes `aggregate_triangle_poincare_typeA` to an
+*arbitrary* bound `B` — in particular to the tight lift RHS `2λ(2·degQuad − λ − S²/mE)`, which the
+aggregate bound `2λ·degQuad` is too loose for in regime ii. With the *exact* per-class maxima
+(`Cp = maxt_port`, `Cc = maxt_core`) the scalar condition `Cp·D_port + Cc·D_core ≤ RHS` is validated on
+all tested regime-ii TYPE A (19/19, max ratio 0.935, `informal/aggregate_typeA_min_sorry.md`) — so this
+reduces `typeA_slack_ge_required` to a single block-flatness scalar inequality. -/
+theorem triEnergy_le_of_partition (P : V → V → Prop) (f : V → ℝ) (Cp Cc B : ℝ)
+    (hport : ∀ i j, G.Adj i j → P i j →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ Cp)
+    (hcore : ∀ i j, G.Adj i j → ¬ P i j →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ Cc)
+    (hcond : Cp * dirichletOn G P f + Cc * dirichletOn G (fun i j => ¬ P i j) f ≤ B) :
+    triEnergy G f ≤ B :=
+  aggregate_typeA_assembly (triEnergy_split G P f)
+    (triEnergyOn_le G P f Cp hport)
+    (triEnergyOn_le G (fun i j => ¬ P i j) f Cc hcore)
+    hcond
+
 /-! ### Regime architecture: `gapEnergy = aggregateSlack − required`
 
 The lift bound `gapEnergy ≥ 0` splits on the sign of `required` (`= −E`,
