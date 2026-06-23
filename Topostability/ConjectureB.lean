@@ -856,6 +856,46 @@ lemma aggregate_triangle_poincare (f : V → ℝ) (lam : ℝ)
     triEnergy G f ≤ 2 * lam * degQuad G f := by
   sorry
 
+/-- **Aggregate triangle-Poincaré via a uniform triangle-count bound (no `sorry`).** If every edge has
+`t_e = |N_a ∩ N_b| ≤ mt` and `mt ≤ degQuad`, then `triEnergy ≤ 2λ·degQuad`. Proof: `triEnergy ≤
+mt·(Dirichlet) = mt·2λ ≤ degQuad·2λ`. This generalizes `aggregate_triangle_poincare_regular`
+(`mt = d−1 ≤ d = degQuad`) and covers any graph with `max_e t_e ≤ degQuad` (regular and low-triangle-
+overlap graphs). It does NOT cover TYPE A bottlenecks (`max t_e ≫ degQuad` there:
+`informal/aggregate_sparse_triangle.md`). -/
+theorem aggregate_triangle_poincare_of_maxt (f : V → ℝ) (lam mt : ℝ)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hnorm : ∑ v : V, (f v) ^ 2 = 1)
+    (hmt : ∀ i j, G.Adj i j → ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ mt)
+    (hlam : 0 ≤ lam) (hbound : mt ≤ degQuad G f) :
+    triEnergy G f ≤ 2 * lam * degQuad G f := by
+  set Sf : ℝ := ∑ v : V, (f v) ^ 2 with hSf
+  have hquad : (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) = 2 * lam * Sf := by
+    have h1 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = ∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v := by
+      rw [Matrix.toLinearMap₂'_apply']; rfl
+    have h2 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
+        = (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) / 2 := by
+      rw [SimpleGraph.lapMatrix_toLinearMap₂']
+    have h3 : (∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v) = lam * Sf := by
+      rw [heig, hSf, Finset.mul_sum]
+      refine Finset.sum_congr rfl fun v _ => ?_
+      simp only [Pi.smul_apply, smul_eq_mul]; ring
+    rw [h1, h3] at h2
+    linarith [h2]
+  have htri : triEnergy G f
+      ≤ mt * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
+    rw [triEnergy, Finset.mul_sum]
+    refine Finset.sum_le_sum fun i _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun j _ => ?_
+    split_ifs with h
+    · exact mul_le_mul_of_nonneg_right (hmt i j h) (sq_nonneg _)
+    · simp
+  rw [hquad, hnorm, mul_one] at htri
+  calc triEnergy G f ≤ mt * (2 * lam) := htri
+    _ ≤ degQuad G f * (2 * lam) := mul_le_mul_of_nonneg_right hbound (by linarith)
+    _ = 2 * lam * degQuad G f := by ring
+
 /-! ### TYPE A bottleneck bridge (conditional, sorry-free)
 
 Reduce the TYPE A case of `aggregate_triangle_poincare` to a single validated scalar condition via the
