@@ -45,6 +45,21 @@ def degQuad (f : V → ℝ) : ℝ := ∑ v : V, (G.degree v : ℝ) * (f v) ^ 2
 /-- `S = Σ_v d_v · f_v`. -/
 def degLin (f : V → ℝ) : ℝ := ∑ v : V, (G.degree v : ℝ) * f v
 
+/-- **Gap energy** `= 2λ(2·fᵀDf − λ − S²/mE) − T = RHS − triEnergy`; the lift bound is `gapEnergy ≥ 0`
+(`informal/conjecture_B_aggregate_slack.md`). -/
+noncomputable def gapEnergy (f : V → ℝ) (lam mE : ℝ) : ℝ :=
+  2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) - triEnergy G f
+
+/-- **Aggregate slack** `S_agg = 2λ·fᵀDf − T` (the slack of `aggregate_triangle_poincare`; `≥ 0`). -/
+def aggregateSlack (f : V → ℝ) (lam : ℝ) : ℝ :=
+  2 * lam * degQuad G f - triEnergy G f
+
+/-- **`Required`** `= 2λ(λ + S²/mE − fᵀDf) = −E`; `> 0` exactly in regime ii (the hard band `E < 0`),
+`≤ 0` in regime i. The aggregate-slack identity reads `gapEnergy = aggregateSlack − required`
+(`informal/conjecture_B_hard_band_E_negative.md`). -/
+noncomputable def required (f : V → ℝ) (lam mE : ℝ) : ℝ :=
+  2 * lam * (lam + (degLin G f) ^ 2 / mE - degQuad G f)
+
 /-- Triangle degree `τ_v = Σ_{u∼v} |N(v)∩N(u)|` (= twice the number of triangles through `v`).
 Appears as the diagonal weight in `triEnergy_diag_corr`. -/
 def triDeg (v : V) : ℝ := ∑ u : V, if G.Adj v u then (triCount G v u : ℝ) else 0
@@ -838,6 +853,64 @@ lemma triEnergy_le_B2prime (f : V → ℝ) :
     exact_mod_cast triCount_le_min_degree_sub_one G h
   · rw [if_neg h, if_neg h]
 
+/-! ### Regime architecture: `gapEnergy = aggregateSlack − required`
+
+The lift bound `gapEnergy ≥ 0` splits on the sign of `required` (`= −E`,
+`informal/conjecture_B_hard_band_E_negative.md`):
+* **regime i** (`required ≤ 0`, `E ≥ 0`): the aggregate Poincaré slack alone gives `gap ≥ 0`;
+* **regime ii** (`required > 0`, `E < 0`) splits further into the *regular* case (proved via
+  `triEnergy_le_RHS_regular`, interlacing `λ ≤ d+1`) and the *TYPE A* case
+  (`typeA_extremality_gap_nonneg`, the only intended TYPE A `sorry`).
+This recovers the original 3-regime classification with the regime-i case a one-line consequence of the
+aggregate Poincaré. -/
+
+/-- **The regime identity** `gapEnergy = aggregateSlack − required` (pure algebra). -/
+lemma gap_eq_aggregateSlack_sub_required (f : V → ℝ) (lam mE : ℝ) :
+    gapEnergy G f lam mE = aggregateSlack G f lam - required G f lam mE := by
+  simp only [gapEnergy, aggregateSlack, required]; ring
+
+/-- **Regime i** (`required ≤ 0`): the aggregate Poincaré slack `aggregateSlack ≥ 0` already gives
+`gapEnergy ≥ 0`, since `gapEnergy = aggregateSlack − required`. -/
+lemma regime_i_from_aggregate (f : V → ℝ) (lam mE : ℝ)
+    (haggr : 0 ≤ aggregateSlack G f lam) (hReq : required G f lam mE ≤ 0) :
+    0 ≤ gapEnergy G f lam mE := by
+  rw [gap_eq_aggregateSlack_sub_required]; linarith
+
+/-- **Regime ii, regular** (no `sorry`): for a `d`-regular graph the bound holds for *every*
+eigenvector (`triEnergy_le_RHS_regular`), hence `gapEnergy ≥ 0`. -/
+lemma regime_ii_regular_gap_nonneg (f : V → ℝ) (lam mE : ℝ) (d : ℕ)
+    (hreg : ∀ v : V, G.degree v = d)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hnorm : ∑ v : V, (f v) ^ 2 = 1) (hperp : ∑ v : V, f v = 0)
+    (hlam0 : 0 ≤ lam) (hlam : lam ≤ (d : ℝ) + 1) :
+    0 ≤ gapEnergy G f lam mE := by
+  have h := triEnergy_le_RHS_regular G f lam mE d hreg heig hnorm hperp hlam0 hlam
+  simp only [gapEnergy]; linarith
+
+/-- **Regime ii, TYPE A — the only intended TYPE A `sorry`.** For a connected-triangle-graph host
+(`hTconn`) and a Fiedler `f` in the hard band (`required > 0`, i.e. `E < 0`, the low-degree-vertex
+bottleneck families: deg2+dense, twin-port), `gapEnergy ≥ 0`. This is the TYPE A extremality content
+(`gap/eff ≥ 1/3`, `informal/conjecture_B_hard_band_E_negative.md`); the hypotheses are sound — verified
+that `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample). -/
+theorem typeA_extremality_gap_nonneg (f : V → ℝ) (lam mE : ℝ)
+    (hTconn : (triangleGraph G).Connected)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hReq : 0 < required G f lam mE) :
+    0 ≤ gapEnergy G f lam mE := by
+  sorry
+
+/-- **Master regime dispatch.** Given the aggregate Poincaré slack (`aggregateSlack ≥ 0`) and a
+connected triangle graph, `gapEnergy ≥ 0`: regime i (`required ≤ 0`) via `regime_i_from_aggregate`,
+regime ii (`required > 0`) via `typeA_extremality_gap_nonneg`. -/
+theorem gapEnergy_nonneg (f : V → ℝ) (lam mE : ℝ)
+    (hTconn : (triangleGraph G).Connected)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (haggr : 0 ≤ aggregateSlack G f lam) :
+    0 ≤ gapEnergy G f lam mE := by
+  by_cases hR : required G f lam mE ≤ 0
+  · exact regime_i_from_aggregate G f lam mE haggr hR
+  · exact typeA_extremality_gap_nonneg G f lam mE hTconn heig (not_le.mp hR)
+
 /-- **The lift inequality `T ≤ λ₂G` — EXISTENTIAL form (the universal form is FALSE).**
 The *universal* statement `∀ f, L_G f = λf → triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/m)` is **FALSE** when
 `λ₂` is degenerate (multiplicity > 1): on `K_d` + pendants (star+clique) a *badly-chosen* Fiedler in the
@@ -862,7 +935,13 @@ theorem triEnergy_le_RHS_exists (lam mE : ℝ)
     ∃ f : V → ℝ, (∑ v : V, (f v) ^ 2 = 1) ∧ (∑ v : V, f v = 0)
       ∧ (G.lapMatrix ℝ).mulVec f = lam • f
       ∧ triEnergy G f ≤ 2 * lam * (2 * degQuad G f - lam - (degLin G f) ^ 2 / mE) := by
-  sorry
+  -- The witness `f₀` itself works: regime architecture gives `gapEnergy f₀ ≥ 0`.
+  refine ⟨f₀, hf₀norm, hf₀perp, hf₀eig, ?_⟩
+  have haggr : 0 ≤ aggregateSlack G f₀ lam := by
+    have := aggregate_triangle_poincare G f₀ lam hf₀eig
+    simp only [aggregateSlack]; linarith
+  have hgap := gapEnergy_nonneg G f₀ lam mE hTconn hf₀eig haggr
+  simp only [gapEnergy] at hgap; linarith
 
 /-- **Conjecture B — triangle-energy lift inequality (EXISTENTIAL).** Given a unit Fiedler `f₀`
 (`L_G f₀ = λ f₀`, `‖f₀‖² = 1`, `f₀ ⊥ 1`), there exists a unit Fiedler `f` for the same `λ` with

@@ -121,9 +121,20 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 
 | `sorry` | statement | obstruction |
 |---|---|---|
-| `aggregate_triangle_poincare` (648) | `T ≤ 2λ·fᵀDf` | independent off-chain (does *not* prove the `K_n` regular case — `K_n` is Required>0, the bound overshoots) |
-| **`triEnergy_le_RHS_exists` (858)** | `(hTconn) → ∃ unit Fiedler f: triEnergy ≤ RHS` (**existential** lift) | the corrected lift content (replaces the FALSE universal `triEnergy_le_RHS`); needs `hTconn` (else `K₁₂+30` pendants: `max gap < 0`, but `triangleGraph` disconnected — out of scope). `conjectureB_lift` = this (sorry-free wrapper) |
-| `conjectureB` (811) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
+| `aggregate_triangle_poincare` (663) | `T ≤ 2λ·fᵀDf` | **regime i** (`Required ≤ 0`): `gapEnergy = aggregateSlack − required ≥ 0` once this holds. Off-chain regular case proved; irregular open |
+| **`typeA_extremality_gap_nonneg` (895)** | `(hTconn) → (Required > 0) → gapEnergy ≥ 0` | **regime ii TYPE A** (the only intended TYPE A sorry): the extremality content `gap/eff ≥ 1/3` (deg2+dense, twin-port). Sound — `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample) |
+| `conjectureB` (967) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
+
+**Regime architecture (`gapEnergy = aggregateSlack − required`, all sorry-free except the two leaves
+above).** `triEnergy_le_RHS_exists` is **now PROVEN** (no longer a sorry) via the master dispatch
+`gapEnergy_nonneg`: the witness `f₀` works because regime i (`required ≤ 0`) follows from
+`aggregate_triangle_poincare` (`regime_i_from_aggregate`), and regime ii (`required > 0`) is
+`typeA_extremality_gap_nonneg`. Sorry-free pieces: `gapEnergy`/`aggregateSlack`/`required` (defs),
+`gap_eq_aggregateSlack_sub_required` (identity, `ring`), `regime_i_from_aggregate`,
+`regime_ii_regular_gap_nonneg` (via `triEnergy_le_RHS_regular`), `gapEnergy_nonneg` (dispatch).
+The 3 sorrys are now `aggregate_triangle_poincare` (regime i) + `typeA_extremality_gap_nonneg`
+(regime ii TYPE A) + `conjectureB` (lift reduction) — the regime split made explicit
+(`informal/conjecture_B_hard_band_E_negative.md`).
 
 **`conjectureB_lift` is now the EXISTENTIAL lift, depending on the single sorry `triEnergy_le_RHS_exists`**
 (`conjectureB_lift = triEnergy_le_RHS_exists` with `hTconn`; `conjecture_B_AB_minus_D.md`). The earlier
@@ -278,7 +289,10 @@ structure.
   leading-order); assembly validated (0/3318). `eff > 0` proven. **Remaining: 3 rigour items**
   (`O(1/N)` correction, asymmetric ports, TYPE A invariance) — analytic, not structural.
 - **Regime 1:** reduced to `aggregate_triangle_poincare` (`T ≤ λ₂fᵀDf`); regular case proved.
-- **Lean:** three `sorry`s remain (`aggregate_triangle_poincare`, `triEnergy_le_RHS_exists`,
-  `conjectureB`), mapped in §6. `triEnergy_le_RHS_exists` (existential lift, `hTconn`) replaced the
-  FALSE universal `triEnergy_le_RHS`/`conjectureB_regime_two`. `triEnergy_le_RHS_regular` proves the
-  regular case (sorry-free modulo `λ≤d+1`).
+- **Lean:** three `sorry`s remain (`aggregate_triangle_poincare` [regime i],
+  `typeA_extremality_gap_nonneg` [regime ii TYPE A], `conjectureB` [lift reduction]), mapped in §6.
+  **The regime architecture `gapEnergy = aggregateSlack − required` is now formalised** (identity +
+  `regime_i_from_aggregate` + `regime_ii_regular_gap_nonneg` + `gapEnergy_nonneg` dispatch, all
+  sorry-free); `triEnergy_le_RHS_exists` is now PROVEN via it (witness `f₀`), so the existential lift's
+  sorry was replaced by the TYPE A leaf. `triEnergy_le_RHS_regular` proves the regular case (sorry-free
+  modulo `λ≤d+1`).
