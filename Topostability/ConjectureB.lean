@@ -1117,7 +1117,23 @@ theorem conjectureB_lift (lam mE : ℝ)
 /-- **Conjecture B (graph statement).** For connected `G` with `T(G)` connected,
 `λ₂(T(G)) ≤ λ₂(G)`. Reduces to `conjectureB_lift` via the projected Fiedler lift
 `h' = Bᵀf − (S/m)1_E ⊥ 1_E` together with `t_ab ≤ min(d_a,d_b)−1`
-(`triCount_le_min_degree_sub_one`); that lift reduction is not yet formalised. -/
+(`triCount_le_min_degree_sub_one`).
+
+**Status of this `sorry` (the third token, genuine open content — NOT a wiring gap):**
+* The **regular** case is fully proved sorry-free in `Paper13.lambda2_triangle_graph_le`
+  (`fiedler_vector_exists` → `edgeLift` test vector → `algebraicConnectivity_le_rayleigh`
+  → `triangleGraph_quadratic_bound`). It needs `G.IsRegularOfDegree d`, `2 ≤ d`, which
+  this general statement does NOT assume, so it cannot be invoked here.
+* The **analytic core** for the irregular case is already wired and depends only on the
+  two intended content sorrys: `conjectureB_lift` (1108) ⟶ `triEnergy_le_RHS_exists`
+  (1085, no own token) ⟶ `aggregate_triangle_poincare` (854) + `typeA_slack_ge_required`
+  (1038). What remains is purely the *graph-level lift reduction*: obtaining the good
+  Fiedler from `conjectureB_lift`'s existential, building the degree-weighted edge lift
+  `h'`, showing `h' ⊥ 1_E`, `h' ≠ 0`, and running Courant–Fischer on `T(G)`. The
+  supporting lemmas exist only for `IsRegularOfDegree` (`edgeLift_sum_zero`,
+  `edgeLift_norm_fiedler`, `triangleGraph_quadratic_bound`); only the numerator identity
+  `triangleGraph_quadratic_form` is general. The irregular norm/perpendicularity analogs
+  are not yet formalised — that is the entire content of this `sorry`. -/
 theorem conjectureB (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (hTV : Fintype.card (G.edgeSet) ≥ 2) (hTconn : (triangleGraph G).Connected) :
     algebraicConnectivity (triangleGraph G) hTV ≤ algebraicConnectivity G hV := by
