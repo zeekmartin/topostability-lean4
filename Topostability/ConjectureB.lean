@@ -964,17 +964,30 @@ lemma regime_ii_regular_gap_nonneg (f : V → ℝ) (lam mE : ℝ) (d : ℕ)
   have h := triEnergy_le_RHS_regular G f lam mE d hreg heig hnorm hperp hlam0 hlam
   simp only [gapEnergy]; linarith
 
-/-- **Regime ii, TYPE A — the only intended TYPE A `sorry`.** For a connected-triangle-graph host
-(`hTconn`) and a Fiedler `f` in the hard band (`required > 0`, i.e. `E < 0`, the low-degree-vertex
-bottleneck families: deg2+dense, twin-port), `gapEnergy ≥ 0`. This is the TYPE A extremality content
-(`gap/eff ≥ 1/3`, `informal/conjecture_B_hard_band_E_negative.md`); the hypotheses are sound — verified
-that `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample). -/
+/-- **The residual TYPE A inequality — the only intended TYPE A `sorry`, in its smallest form.** In
+regime ii (`required > 0`) the aggregate slack `aggregateSlack = 2λ·degQuad − triEnergy` dominates
+`required`. This is exactly the hard-band extremality `S_agg ≥ Required`
+(`informal/conjecture_B_hard_band_E_negative.md`) / `gap/eff ≥ 1/3` — a direct comparison of two energy
+quantities (cleaner than the raw `gapEnergy ≥ 0`). Sound: verified `hTconn ⇒` this holds for every
+eigenvector (no degenerate counterexample). The aggregate Poincaré only gives `aggregateSlack ≥ 0`;
+regime ii needs the strictly stronger `≥ required`. -/
+theorem typeA_slack_ge_required (f : V → ℝ) (lam mE : ℝ)
+    (hTconn : (triangleGraph G).Connected)
+    (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
+    (hReq : 0 < required G f lam mE) :
+    required G f lam mE ≤ aggregateSlack G f lam := by
+  sorry
+
+/-- **Regime ii, TYPE A — `gapEnergy ≥ 0` (now sorry-free modulo `typeA_slack_ge_required`).** Via the
+identity `gapEnergy = aggregateSlack − required`, the bound is exactly `required ≤ aggregateSlack`. -/
 theorem typeA_extremality_gap_nonneg (f : V → ℝ) (lam mE : ℝ)
     (hTconn : (triangleGraph G).Connected)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
     (hReq : 0 < required G f lam mE) :
     0 ≤ gapEnergy G f lam mE := by
-  sorry
+  rw [gap_eq_aggregateSlack_sub_required G f lam mE]
+  have h := typeA_slack_ge_required G f lam mE hTconn heig hReq
+  linarith
 
 /-- **Master regime dispatch.** Given the aggregate Poincaré slack (`aggregateSlack ≥ 0`) and a
 connected triangle graph, `gapEnergy ≥ 0`: regime i (`required ≤ 0`) via `regime_i_from_aggregate`,

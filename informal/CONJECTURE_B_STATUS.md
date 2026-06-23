@@ -122,8 +122,8 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 | `sorry` | statement | obstruction |
 |---|---|---|
 | `aggregate_triangle_poincare` (854) | `T ≤ 2λ·fᵀDf` (regime i) | **regime i**, direct sorry on the TRUE statement (`T/(2λ·degQuad) ≤ 0.17`, big slack). Regular case proved (`aggregate_triangle_poincare_regular`). Must be proved directly — the `B2′`/min-degree relaxation is RULED OUT (see below) |
-| **`typeA_extremality_gap_nonneg` (898)** | `(hTconn) → (Required > 0) → gapEnergy ≥ 0` | **regime ii TYPE A** (the only intended TYPE A sorry): the extremality content `gap/eff ≥ 1/3` (deg2+dense, twin-port). Sound — `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample) |
-| `conjectureB` (970) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
+| **`typeA_slack_ge_required` (974)** | `(hTconn) → (Required > 0) → required ≤ aggregateSlack` | **regime ii TYPE A** (the only intended TYPE A sorry, now in SMALLEST form): `S_agg ≥ Required` / `gap/eff ≥ 1/3` — a direct comparison of two energy quantities. **`typeA_extremality_gap_nonneg` is now SORRY-FREE** (derives `gapEnergy ≥ 0` from this via `gap_eq_aggregateSlack_sub_required`). Aggregate gives only `aggregateSlack ≥ 0`; regime ii needs the stronger `≥ required`. Sound for every eigenvector under `hTconn` |
+| `conjectureB` (1057) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
 **TYPE A bridge (sorry-free, commit "Implement TYPE A Lean bridge").** `aggregate_triangle_poincare_typeA`
 reduces the TYPE A case of `aggregate_triangle_poincare` to a single scalar condition `hcond`
