@@ -121,17 +121,18 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 
 | `sorry` | statement | obstruction |
 |---|---|---|
-| `B2prime_le_two_lam_degQuad` (853) | `B2′ ≤ 2λ·fᵀDf` (triangle-free degree/Dirichlet leaf) | **regime i**, refined: `aggregate_triangle_poincare` (`T ≤ 2λ·fᵀDf`) is now **sorry-free** = `triEnergy_le_B2prime` ∘ this leaf. The triangle-counting content is discharged; what remains is a pure degree/Dirichlet/eigenvector inequality. Genuinely spectral (the scale-free product form is FALSE for arbitrary `f`). **Regular case proved** (`B2prime_le_two_lam_degQuad_regular`, sorry-free) |
-| **`typeA_extremality_gap_nonneg` (957)** | `(hTconn) → (Required > 0) → gapEnergy ≥ 0` | **regime ii TYPE A** (the only intended TYPE A sorry): the extremality content `gap/eff ≥ 1/3` (deg2+dense, twin-port). Sound — `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample) |
-| `conjectureB` (1029) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
+| `aggregate_triangle_poincare` (854) | `T ≤ 2λ·fᵀDf` (regime i) | **regime i**, direct sorry on the TRUE statement (`T/(2λ·degQuad) ≤ 0.17`, big slack). Regular case proved (`aggregate_triangle_poincare_regular`). Must be proved directly — the `B2′`/min-degree relaxation is RULED OUT (see below) |
+| **`typeA_extremality_gap_nonneg` (898)** | `(hTconn) → (Required > 0) → gapEnergy ≥ 0` | **regime ii TYPE A** (the only intended TYPE A sorry): the extremality content `gap/eff ≥ 1/3` (deg2+dense, twin-port). Sound — `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample) |
+| `conjectureB` (970) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
-**Regime-i refinement (commit "refine aggregate triangle Poincaré leaf").** `aggregate_triangle_poincare`
-is no longer a sorry — it is `triEnergy ≤ B2′` (`triEnergy_le_B2prime`, sorry-free) composed with the
-triangle-free leaf `B2′ ≤ 2λ·degQuad` (`B2prime_le_two_lam_degQuad`). The open regime-i content is thus
-refined from the triangle-energy bound to a pure degree-energy bound; its **regular case is sorry-free**
-(`B2prime_le_two_lam_degQuad_regular`: `B2′ = (d−1)·Dirichlet ≤ d·Dirichlet = 2λ·degQuad`). The
-general leaf is spectral — verified that the eigenvector-free product form `B2′·‖f‖² ≤ Dirichlet·fᵀDf`
-is FALSE for arbitrary `f` (4386/4800), so the eigenvector equation is essential.
+**Regime-i: the `B2′` refinement was REVERTED (commit "C crosses -1: B2' leaf is FALSE, revert").**
+The intermediate `B2′ ≤ 2λ·degQuad` (`B2prime_le_two_lam_degQuad`) is **FALSE** on sparse-core
+deg2+dense (`q ≤ 0.12`; `deg2d140_0.05`: `B2′/(2λ·degQuad) = 1.05` while `triEnergy/(2λ·degQuad) =
+0.01`) — the per-edge `t_e ≤ min−1` is far too lossy when there are few triangles (`T ≪ B2′`). The
+earlier "46/46" corpus had only `q ≥ 0.3`. The unsound sorry was deleted; `aggregate_triangle_poincare`
+is restored as a direct sorry on the TRUE `T ≤ 2λ·degQuad` (which holds with slack ≥ 0.83). The
+equivalent `C = ½(A+I) ≥ −λ` form is also false (`C/λ → −1.07`) and not a general PSD inequality (`M_C+L`
+indefinite). See `informal/conjecture_B_signed_cancellation.md`.
 
 **Regime architecture (`gapEnergy = aggregateSlack − required`, all sorry-free except the two leaves
 above).** `triEnergy_le_RHS_exists` is **now PROVEN** (no longer a sorry) via the master dispatch

@@ -647,11 +647,10 @@ theorem typeB_triEnergy_bound (f : V → ℝ) (B : Finset V) (W Cflat lam2 : ℝ
     _ ≤ W * (Cflat * lam2 ^ 2) := h2
     _ = (W * Cflat) * lam2 ^ 2 := by ring
 
--- `aggregate_triangle_poincare` (`T ≤ 2λ·degQuad`, regime i) is now defined AFTER
--- `triEnergy_le_B2prime`: it is proved via that lemma composed with the triangle-free leaf
--- `B2prime_le_two_lam_degQuad`. The open content is thus refined to a pure degree/Dirichlet
--- inequality (no triangle counting); the regular case of the leaf is sorry-free
--- (`B2prime_le_two_lam_degQuad_regular`).
+-- `aggregate_triangle_poincare` (`T ≤ 2λ·degQuad`, regime i) is defined AFTER `triEnergy_le_B2prime`.
+-- It is a direct `sorry`: the `B2′` route was REVERTED — `B2′ ≤ 2λ·degQuad` is FALSE on sparse-core
+-- deg2+dense (`triEnergy_le_B2prime` is too lossy when there are few triangles, `T ≪ B2′`); see
+-- `informal/conjecture_B_signed_cancellation.md`. The regular case is `aggregate_triangle_poincare_regular`.
 
 /-- **Aggregate triangle-Poincaré for regular graphs (no `sorry`).** For a `d`-regular graph and any
 Laplacian eigenpair `(lam, f)`, `triEnergy ≤ 2·lam·degQuad` — the regular case of
@@ -841,79 +840,21 @@ lemma triEnergy_le_B2prime (f : V → ℝ) :
     exact_mod_cast triCount_le_min_degree_sub_one G h
   · rw [if_neg h, if_neg h]
 
-/-- **Triangle-free leaf `B2′ ≤ 2λ·degQuad` (OPEN — the refined regime-i sorry).** The degree-energy
-`B2′ = Σ_{i,j}[i∼j](min(d_i,d_j)−1)(f_i−f_j)²` is bounded by `2λ·fᵀDf` at any Laplacian eigenpair. This
-is the aggregate Poincaré with the triangle-counting content already discharged (`triEnergy ≤ B2′`,
-`triEnergy_le_B2prime`); what remains is a pure *degree/Dirichlet/eigenvector* inequality (no
-triangles). It is genuinely spectral — the scale-free product form
-`B2′·‖f‖² ≤ Dirichlet·fᵀDf` is FALSE for arbitrary `f` (`conjecture_B_combinatorial_lemma.md` corpus),
-so the eigenvector equation is essential. Holds on every tested graph including degenerate eigenspaces
-(`informal/conjecture_B_aggregate_slack.md`). The regular case is proved below
-(`B2prime_le_two_lam_degQuad_regular`). -/
-lemma B2prime_le_two_lam_degQuad (f : V → ℝ) (lam : ℝ)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    (∑ i : V, ∑ j : V,
-        if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
-      ≤ 2 * lam * degQuad G f := by
-  sorry
+/-- **Aggregate triangle-Poincaré `T ≤ 2λ·degQuad` (regime i, OPEN).** `triEnergy ≤ 2λ·fᵀDf` at any
+Laplacian eigenpair. Holds on every tested graph including degenerate eigenspaces (`T/(2λ·degQuad) ≤
+0.17` even on sparse-core deg2+dense); the regular case is `aggregate_triangle_poincare_regular`.
 
-/-- **Regular case of the triangle-free leaf (no `sorry`).** For a `d`-regular graph,
-`min(d_i,d_j)−1 = d−1` on every edge, so `B2′ = (d−1)·Dirichlet ≤ d·Dirichlet = 2λ·degQuad` (the last
-equality is `degQuad = d·‖f‖²` and `Dirichlet = 2λ·‖f‖²`). No spectral bound is needed. -/
-theorem B2prime_le_two_lam_degQuad_regular (f : V → ℝ) (lam : ℝ) (d : ℕ)
-    (hreg : ∀ v : V, G.degree v = d)
-    (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    (∑ i : V, ∑ j : V,
-        if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
-      ≤ 2 * lam * degQuad G f := by
-  set Sf : ℝ := ∑ v : V, (f v) ^ 2 with hSf
-  have hquad : (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) = 2 * lam * Sf := by
-    have h1 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
-        = ∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v := by
-      rw [Matrix.toLinearMap₂'_apply']; rfl
-    have h2 : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f
-        = (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) / 2 := by
-      rw [SimpleGraph.lapMatrix_toLinearMap₂']
-    have h3 : (∑ v : V, f v * ((G.lapMatrix ℝ).mulVec f) v) = lam * Sf := by
-      rw [heig, hSf, Finset.mul_sum]
-      refine Finset.sum_congr rfl fun v _ => ?_
-      simp only [Pi.smul_apply, smul_eq_mul]; ring
-    rw [h1, h3] at h2
-    linarith [h2]
-  have hdq : degQuad G f = (d : ℝ) * Sf := by
-    rw [degQuad, hSf, Finset.mul_sum]
-    refine Finset.sum_congr rfl fun v _ => ?_
-    rw [hreg v]
-  have hDnn : 0 ≤ (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) :=
-    Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => by split_ifs <;> positivity
-  have hLHS : (∑ i : V, ∑ j : V,
-        if G.Adj i j then ((min (G.degree i) (G.degree j) - 1 : ℕ) : ℝ) * (f i - f j) ^ 2 else 0)
-      = ((d : ℝ) - 1) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by
-    rw [Finset.mul_sum]
-    refine Finset.sum_congr rfl fun i _ => ?_
-    rw [Finset.mul_sum]
-    refine Finset.sum_congr rfl fun j _ => ?_
-    split_ifs with h
-    · have hjmem : j ∈ G.neighborFinset i := by rw [SimpleGraph.mem_neighborFinset]; exact h
-      have hd1 : 1 ≤ d := by
-        rw [← hreg i, ← SimpleGraph.card_neighborFinset_eq_degree]
-        exact Finset.card_pos.mpr ⟨j, hjmem⟩
-      rw [hreg i, hreg j, min_self, Nat.cast_sub hd1, Nat.cast_one]
-    · ring
-  rw [hLHS]
-  calc ((d : ℝ) - 1) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0)
-      ≤ (d : ℝ) * (∑ i : V, ∑ j : V, if G.Adj i j then (f i - f j) ^ 2 else 0) := by nlinarith [hDnn]
-    _ = (d : ℝ) * (2 * lam * Sf) := by rw [hquad]
-    _ = 2 * lam * degQuad G f := by rw [hdq]; ring
-
-/-- **Aggregate triangle-Poincaré `T ≤ 2λ·degQuad` (regime i) — now sorry-free modulo the triangle-free
-leaf.** Composes `triEnergy ≤ B2′` (`triEnergy_le_B2prime`) with `B2′ ≤ 2λ·degQuad`
-(`B2prime_le_two_lam_degQuad`). This is the regime-i input to `gapEnergy_nonneg`
-(`regime_i_from_aggregate`). -/
+**NB — the `B2′` route does NOT prove this** (`informal/conjecture_B_signed_cancellation.md`): the
+intermediate `B2′ = Σ_e(min(d_a,d_b)−1)g²` satisfies `triEnergy ≤ B2′` (`triEnergy_le_B2prime`), but
+`B2′ ≤ 2λ·degQuad` is **FALSE** on sparse-core deg2+dense (`q ≤ 0.12`, e.g. `deg2d140_0.05`:
+`B2′/(2λ·degQuad) = 1.05`, while `triEnergy/(2λ·degQuad) = 0.01`). The per-edge bound `t_e ≤ min−1` is
+far too lossy when the core is sparse (few triangles, `T ≪ B2′`), so `B2′` overshoots. The equivalent
+`C = ½(A+I) ≥ −λ` form also fails as a general quadratic inequality (the matrix `M_C + L` is indefinite,
+min eigenvalue `−0.13`); the eigenvector equation is essential. This lemma must be proved directly. -/
 lemma aggregate_triangle_poincare (f : V → ℝ) (lam : ℝ)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f) :
-    triEnergy G f ≤ 2 * lam * degQuad G f :=
-  (triEnergy_le_B2prime G f).trans (B2prime_le_two_lam_degQuad G f lam heig)
+    triEnergy G f ≤ 2 * lam * degQuad G f := by
+  sorry
 
 /-! ### Regime architecture: `gapEnergy = aggregateSlack − required`
 
