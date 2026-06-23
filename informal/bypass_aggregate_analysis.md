@@ -193,6 +193,10 @@ TASK 4) for clarity, proving regime ii aggregate-free. Cosmetic, not a bypass.
 
 ### Where the real leverage is
 The aggregate is now the *single* unavoidable analytic sorry for ~97% of graphs
-(regime i). Effort is best spent proving `aggregate_triangle_poincare` itself
-(the `M_C + L` quadratic-form / eigenvector-equation route), not on
-case-restructuring, which cannot retire it.
+(regime i). Effort is best spent proving `aggregate_triangle_poincare` itself —
+and the fixed-quadratic-form routes are already **ruled out** (the `M_C + L`
+signed-SOS form is indefinite, `informal/conjecture_B_signed_cancellation.md`;
+`φ=M_C f` Rayleigh witnesses overshoot, `informal/conjecture_B_variational_core.md`),
+so the proof must use the eigenvector equation `Lu=λu` directly — not on
+case-restructuring, which cannot retire it. *(Correction: an earlier draft called
+`M_C+L` "the route"; it is a ruled-out route. See `informal/M_C_route_clarification.md`.)*
