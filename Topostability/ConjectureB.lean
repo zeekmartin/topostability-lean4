@@ -1030,7 +1030,11 @@ regime ii (`required > 0`) the aggregate slack `aggregateSlack = 2λ·degQuad �
 (`informal/conjecture_B_hard_band_E_negative.md`) / `gap/eff ≥ 1/3` — a direct comparison of two energy
 quantities (cleaner than the raw `gapEnergy ≥ 0`). Sound: verified `hTconn ⇒` this holds for every
 eigenvector (no degenerate counterexample). The aggregate Poincaré only gives `aggregateSlack ≥ 0`;
-regime ii needs the strictly stronger `≥ required`. -/
+regime ii needs the strictly stronger `≥ required`. **Conditional formalisation:** the sorry-free
+`typeA_slack_ge_required_of_resolvent` (`Helpers/BlockResolventBridge.lean`) derives this exact
+conclusion from the **block resolvent bound** `D_core ≤ ρ·sourceNormSq` plus the residual scalar
+flatness inequality, isolating that resolvent bound as the only remaining gap (it needs matrix-inverse
+/ Cauchy-interlacing infrastructure absent from Mathlib). -/
 theorem typeA_slack_ge_required (f : V → ℝ) (lam mE : ℝ)
     (hTconn : (triangleGraph G).Connected)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)

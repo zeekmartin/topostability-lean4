@@ -7,6 +7,7 @@ import Topostability.Paper14
 import Topostability.Paper15
 import Topostability.Paper16
 import Topostability.ConjectureB
+import Topostability.Helpers.BlockResolventBridge
 import Topostability.SimplicialIdentity
 import Topostability.Verify
 import Topostability.Tests
