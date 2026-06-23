@@ -1,5 +1,12 @@
 # Conjecture B — Case 2A: tightening the `D_core` bound (the BLOCK resolvent closes 17/17)
 
+> **⚠️ CORRECTION (see `block_resolvent_lean_report.md`):** the claim "`‖s‖² = D_port` exactly" below is
+> **FALSE in general** — it holds only 8/17 (true for deg2dense where each boundary vertex has ONE port
+> neighbour; false for twin where a core vertex can be adjacent to 2 ports, giving
+> `source_w = f_a+f_b−2f_w ≠` the two `D_port` edge terms). The block bound still closes hcond 17/17, but
+> with the **actual source norm `‖s‖²`**, NOT `D_port`. The closure conclusion stands; the `‖s‖²=D_port`
+> identity does not.
+
 Tighten the `D_core` bound so `hcond : (δ−1)D_port + maxt_core·D_core ≤ RHS` closes on all 17 Case 2A
 graphs. **Result: the γ-resolvent overshoots because it uses the GLOBAL operator norm `γ/(γ−λ)²`, but the
 port-boundary source `s` is LOCALIZED on `∂` = core-vertices-adjacent-to-ports (`|∂|=2` for deg2dense).
