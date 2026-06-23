@@ -856,6 +856,80 @@ lemma aggregate_triangle_poincare (f : V → ℝ) (lam : ℝ)
     triEnergy G f ≤ 2 * lam * degQuad G f := by
   sorry
 
+/-! ### TYPE A bottleneck bridge (conditional, sorry-free)
+
+Reduce the TYPE A case of `aggregate_triangle_poincare` to a single validated scalar condition via the
+port/core edge split (`informal/aggregate_typeA_lean_bridge.md`). The edge predicate `P` marks
+"port edges"; `triEnergyOn`/`dirichletOn` are the energy / Dirichlet sums restricted to `P`. All lemmas
+here are sorry-free; the open content is the scalar condition `hcond` (a block-gap / port-mass relation,
+not proved here). -/
+
+open Classical in
+/-- Dirichlet energy summed over edges satisfying the predicate `P` (the port/core split). -/
+noncomputable def dirichletOn (P : V → V → Prop) (f : V → ℝ) : ℝ :=
+  ∑ i : V, ∑ j : V, if G.Adj i j ∧ P i j then (f i - f j) ^ 2 else 0
+
+open Classical in
+/-- Triangle energy summed over edges satisfying the predicate `P`. -/
+noncomputable def triEnergyOn (P : V → V → Prop) (f : V → ℝ) : ℝ :=
+  ∑ i : V, ∑ j : V,
+    if G.Adj i j ∧ P i j then ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) * (f i - f j) ^ 2
+    else 0
+
+/-- The triangle energy splits over any edge predicate `P` and its complement. -/
+lemma triEnergy_split (P : V → V → Prop) (f : V → ℝ) :
+    triEnergy G f = triEnergyOn G P f + triEnergyOn G (fun i j => ¬ P i j) f := by
+  classical
+  unfold triEnergy triEnergyOn
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  by_cases hadj : G.Adj i j
+  · by_cases hp : P i j <;> simp [hadj, hp]
+  · simp [hadj]
+
+/-- **Monotone triangle-energy bound (no `sorry`).** If every `P`-edge has triangle count `t_e ≤ C`,
+then `triEnergyOn P ≤ C · dirichletOn P`. Used with `C = δ−1` on port edges
+(`triCount_le_min_degree_sub_one`) and `C = Δ_H` on core edges. -/
+lemma triEnergyOn_le (P : V → V → Prop) (f : V → ℝ) (C : ℝ)
+    (hC : ∀ i j, G.Adj i j → P i j →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ C) :
+    triEnergyOn G P f ≤ C * dirichletOn G P f := by
+  classical
+  unfold triEnergyOn dirichletOn
+  rw [Finset.mul_sum]
+  refine Finset.sum_le_sum fun i _ => ?_
+  rw [Finset.mul_sum]
+  refine Finset.sum_le_sum fun j _ => ?_
+  split_ifs with h
+  · exact mul_le_mul_of_nonneg_right (hC i j h.1 h.2) (sq_nonneg _)
+  · simp
+
+/-- **Assembly (no `sorry`):** split + per-class bounds + scalar condition ⇒ the target. Pure `linarith`. -/
+lemma aggregate_typeA_assembly {T Tport Tcore RHS bp bc : ℝ}
+    (hsplit : T = Tport + Tcore) (hp : Tport ≤ bp) (hc : Tcore ≤ bc)
+    (hcond : bp + bc ≤ RHS) : T ≤ RHS := by linarith
+
+/-- **TYPE A aggregate triangle-Poincaré (conditional, no `sorry`).** For an edge predicate `P` marking
+port edges, given the port bound `t_e ≤ δ−1` on `P`-edges, the core bound `t_e ≤ Δ_H` on the rest, and
+the scalar condition `(δ−1)·D_port + Δ_H·D_core ≤ 2λ·degQuad` (validated 20/20 on TYPE A,
+`informal/aggregate_typeA_lean_bridge.md`), the aggregate Poincaré holds. The three inputs are the
+mechanical per-class bounds (reusing `triCount_le_min_degree_sub_one` on ports) plus the open scalar
+condition `hcond`; the assembly is `linarith`. -/
+theorem aggregate_triangle_poincare_typeA (P : V → V → Prop) (f : V → ℝ) (lam : ℝ) (δ ΔH : ℕ)
+    (hport : ∀ i j, G.Adj i j → P i j →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ (δ : ℝ) - 1)
+    (hcore : ∀ i j, G.Adj i j → ¬ P i j →
+        ((G.neighborFinset i ∩ G.neighborFinset j).card : ℝ) ≤ (ΔH : ℝ))
+    (hcond : ((δ : ℝ) - 1) * dirichletOn G P f + (ΔH : ℝ) * dirichletOn G (fun i j => ¬ P i j) f
+        ≤ 2 * lam * degQuad G f) :
+    triEnergy G f ≤ 2 * lam * degQuad G f :=
+  aggregate_typeA_assembly (triEnergy_split G P f)
+    (triEnergyOn_le G P f ((δ : ℝ) - 1) hport)
+    (triEnergyOn_le G (fun i j => ¬ P i j) f (ΔH : ℝ) hcore)
+    hcond
+
 /-! ### Regime architecture: `gapEnergy = aggregateSlack − required`
 
 The lift bound `gapEnergy ≥ 0` splits on the sign of `required` (`= −E`,

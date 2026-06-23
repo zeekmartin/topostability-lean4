@@ -125,6 +125,16 @@ in `n`), *not* finite-size and *not* at the (benign) `λ/γ → 1` boundary.
 | **`typeA_extremality_gap_nonneg` (898)** | `(hTconn) → (Required > 0) → gapEnergy ≥ 0` | **regime ii TYPE A** (the only intended TYPE A sorry): the extremality content `gap/eff ≥ 1/3` (deg2+dense, twin-port). Sound — `hTconn ⇒ gapEnergy(f) ≥ 0` for every eigenvector (no degenerate counterexample) |
 | `conjectureB` (970) | `λ₂(T(G)) ≤ λ₂(G)` | the projected-Fiedler lift reduction (orthogonal, not yet formalised) |
 
+**TYPE A bridge (sorry-free, commit "Implement TYPE A Lean bridge").** `aggregate_triangle_poincare_typeA`
+reduces the TYPE A case of `aggregate_triangle_poincare` to a single scalar condition `hcond`
+(`(δ−1)·D_port + Δ_H·D_core ≤ 2λ·degQuad`, validated 20/20). Sorry-free supporting lemmas: `dirichletOn`,
+`triEnergyOn` (P-restricted energy/Dirichlet over an edge predicate `P` = port edges), `triEnergy_split`
+(`T = triEnergyOn P + triEnergyOn ¬P`), `triEnergyOn_le` (`t_e ≤ C` on P-edges ⇒ `triEnergyOn ≤ C·dirichletOn`),
+`aggregate_typeA_assembly` (`linarith`). The two per-class inputs (`hport`, `hcore`) are mechanical
+(`t_e ≤ δ−1` on ports via `triCount_le_min_degree_sub_one`; `t_e ≤ Δ_H` on core); only `hcond` is open.
+This does not change the sorry count (it is a conditional lemma; the global `aggregate_triangle_poincare`
+stays the direct sorry).
+
 **Regime-i: the `B2′` refinement was REVERTED (commit "C crosses -1: B2' leaf is FALSE, revert").**
 The intermediate `B2′ ≤ 2λ·degQuad` (`B2prime_le_two_lam_degQuad`) is **FALSE** on sparse-core
 deg2+dense (`q ≤ 0.12`; `deg2d140_0.05`: `B2′/(2λ·degQuad) = 1.05` while `triEnergy/(2λ·degQuad) =
