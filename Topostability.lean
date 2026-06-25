@@ -8,6 +8,7 @@ import Topostability.Paper15
 import Topostability.Paper16
 import Topostability.ConjectureB
 import Topostability.Helpers.BlockResolventBridge
+import Topostability.Helpers.DirichletPartition
 import Topostability.SimplicialIdentity
 import Topostability.Verify
 import Topostability.Tests
