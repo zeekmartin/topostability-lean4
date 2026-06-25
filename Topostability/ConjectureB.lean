@@ -2,6 +2,7 @@ import Topostability.Defs
 import Topostability.Shared
 import Topostability.Paper14
 import Topostability.Paper15
+import Topostability.Helpers.IrregularLift
 import Mathlib.Combinatorics.SimpleGraph.LapMatrix
 
 /-!
@@ -1137,6 +1138,171 @@ theorem conjectureB_lift (lam mE : ℝ)
 theorem conjectureB (hconn : G.Connected) (hV : Fintype.card V ≥ 2)
     (hTV : Fintype.card (G.edgeSet) ≥ 2) (hTconn : (triangleGraph G).Connected) :
     algebraicConnectivity (triangleGraph G) hTV ≤ algebraicConnectivity G hV := by
-  sorry
+  classical
+  set lam := algebraicConnectivity G hV with hlam_def
+  -- Edge count `m = |E|` as a real (positive, since `|E| ≥ 2`).
+  set m : ℝ := (Fintype.card (G.edgeSet) : ℝ) with hm_def
+  have hm_pos : 0 < m := by rw [hm_def]; exact_mod_cast lt_of_lt_of_le (by norm_num) hTV
+  have hm_ne : m ≠ 0 := ne_of_gt hm_pos
+  -- Step 1: a Fiedler vector `f₀` (eigenvector for `lam`, zero sum), normalised to unit `g`.
+  obtain ⟨f₀, hf₀ne, hf₀sum, hf₀eig⟩ := fiedler_vector_exists G hconn hV
+  have hN_pos : 0 < ∑ v, (f₀ v) ^ 2 := by
+    apply Finset.sum_pos' (fun i _ => sq_nonneg _)
+    obtain ⟨v, hv⟩ : ∃ v, f₀ v ≠ 0 := by
+      by_contra h; push_neg at h; exact hf₀ne (funext h)
+    exact ⟨v, Finset.mem_univ _, by positivity⟩
+  set s := Real.sqrt (∑ v, (f₀ v) ^ 2) with hs_def
+  have hs_pos : 0 < s := Real.sqrt_pos.mpr hN_pos
+  have hs_sq : s ^ 2 = ∑ v, (f₀ v) ^ 2 := Real.sq_sqrt (le_of_lt hN_pos)
+  set g : V → ℝ := fun v => f₀ v / s with hg_def
+  have hgsum : ∑ v, g v = 0 := by
+    simp only [hg_def]; rw [← Finset.sum_div, hf₀sum, zero_div]
+  have hgnorm : ∑ v, (g v) ^ 2 = 1 := by
+    simp only [hg_def, div_pow]; rw [← Finset.sum_div, ← hs_sq]
+    field_simp
+  have hgeig : (G.lapMatrix ℝ).mulVec g = lam • g := by
+    have hgs : g = s⁻¹ • f₀ := by funext v; simp [hg_def, div_eq_inv_mul]
+    rw [hgs, Matrix.mulVec_smul, hf₀eig, smul_smul, smul_smul, mul_comm]
+  -- Step 2: the existential lift gives a UNIT Fiedler `f` with the triangle-energy bound.
+  obtain ⟨f, hfnorm, hfperp, hfeig, hbound⟩ :=
+    conjectureB_lift G lam m hTconn g hgnorm hgsum hgeig
+  -- Step 3: edge energy of `f` equals `lam` (eigenvector + unit norm).
+  have hf_edge_energy : ∑ e : G.edgeSet,
+      Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val = lam := by
+    have heig : dotProduct f ((G.lapMatrix ℝ).mulVec f) = lam * dotProduct f f := by
+      rw [hfeig]; simp only [dotProduct, Pi.smul_apply, smul_eq_mul]
+      simp_rw [mul_comm (f _) (lam * f _),
+        show ∀ x, lam * f x * f x = f x ^ 2 * lam from fun x => by ring]
+      rw [← Finset.sum_mul]; ring
+    have hqf := quadratic_form_eq_edge_sum G f
+    have hlm : Matrix.toLinearMap₂' ℝ (G.lapMatrix ℝ) f f =
+        dotProduct f ((G.lapMatrix ℝ).mulVec f) := by rw [Matrix.toLinearMap₂'_apply']
+    rw [hlm, heig] at hqf
+    have hconv : ∑ e ∈ G.edgeFinset,
+        Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e =
+        ∑ e : G.edgeSet,
+          Sym2.lift ⟨fun u v => (f u - f v) ^ 2, fun u v => by ring⟩ e.val := by
+      rw [← Finset.sum_coe_sort]
+      exact @Fintype.sum_equiv _ _ ℝ _ _ _
+        (Equiv.subtypeEquivRight (fun _ => SimpleGraph.mem_edgeFinset (G := G)))
+        _ _ (fun _ => rfl)
+    have hdot : dotProduct f f = ∑ v, (f v) ^ 2 := by simp [dotProduct, sq]
+    rw [hdot, hfnorm, mul_one] at hqf
+    rw [← hconv]; linarith [hqf]
+  -- Convenient abbreviations matching `degLin`/`degQuad`.
+  have hsumlift : ∑ e : G.edgeSet, edgeLift G f e = degLin G f := edgeLift_sum_general G f
+  have hnormlift : ∑ e : G.edgeSet, (edgeLift G f e) ^ 2 = 2 * degQuad G f - lam := by
+    rw [edgeLift_norm_fiedler_general G f, hf_edge_energy]
+    simp only [degQuad]
+  -- Step 4: the projected edge lift `h = Bᵀf − (S/m)·1`  (S = degLin G f).
+  set c : ℝ := degLin G f / m with hc_def
+  set h : G.edgeSet → ℝ := fun e => edgeLift G f e - c with hh_def
+  -- Denominator `D = ‖h‖² = 2·fᵀDf − λ − S²/m`  (the bracket in the lift bound).
+  have hdenom : ∑ e : G.edgeSet, (h e) ^ 2 = 2 * degQuad G f - lam - (degLin G f) ^ 2 / m := by
+    have hexp : ∀ e : G.edgeSet,
+        (h e) ^ 2 = (edgeLift G f e) ^ 2 - 2 * c * edgeLift G f e + c ^ 2 := by
+      intro e; simp only [hh_def]; ring
+    simp_rw [hexp]
+    rw [Finset.sum_add_distrib, Finset.sum_sub_distrib, ← Finset.mul_sum,
+      Finset.sum_const, Finset.card_univ, hnormlift, hsumlift, nsmul_eq_mul, ← hm_def, hc_def]
+    field_simp
+    ring
+  -- `h ⊥ 1` and `h ≠ 0`.
+  have hh_perp : ∑ e : G.edgeSet, h e = 0 := by
+    simp only [hh_def]
+    rw [Finset.sum_sub_distrib, hsumlift, Finset.sum_const, Finset.card_univ, nsmul_eq_mul,
+      ← hm_def, hc_def]
+    field_simp
+    ring
+  -- The crux: the denominator is STRICTLY positive (`h ≠ 0`).
+  -- Equivalently the Fiedler edge-lift `Bᵀf` is non-constant on `E`.
+  -- The regular proof got this for free from `λ < 2d`; here we use `hTconn`:
+  -- `T(G)` connected with `≥ 2` vertices yields a *triangle* (⇒ `G` non-bipartite),
+  -- so a constant edge-lift `f u + f v ≡ c` would pin `f ≡ c/2` on the whole
+  -- connected graph, forcing `f = 0` (since `∑ f = 0`), contradicting `‖f‖ = 1`.
+  have hD_pos : 0 < 2 * degQuad G f - lam - (degLin G f) ^ 2 / m := by
+    rw [← hdenom]
+    by_contra hle
+    push_neg at hle
+    -- All edge lifts collapse to the constant `c`.
+    have hall : ∀ e : G.edgeSet, h e = 0 := by
+      intro e
+      have hsingle : (h e) ^ 2 ≤ ∑ e' : G.edgeSet, (h e') ^ 2 :=
+        Finset.single_le_sum (fun i _ => sq_nonneg (h i)) (Finset.mem_univ e)
+      have hz : (h e) ^ 2 = 0 := le_antisymm (le_trans hsingle hle) (sq_nonneg _)
+      exact pow_eq_zero_iff (by norm_num) |>.mp hz
+    have hconst : ∀ e : G.edgeSet, edgeLift G f e = c := by
+      intro e; have he := hall e; simp only [hh_def] at he; linarith
+    -- Constant lift ⇒ `f a + f b = c` on every edge.
+    have hedge : ∀ a b : V, G.Adj a b → f a + f b = c := by
+      intro a b hab
+      have hval := hconst ⟨s(a, b), G.mem_edgeSet.mpr hab⟩
+      rw [edgeLift_mk] at hval
+      exact hval
+    -- A triangle in `G` from `T(G)` connected with ≥ 2 vertices.
+    obtain ⟨e₁, e₂, hne⟩ : ∃ a b : G.edgeSet, a ≠ b :=
+      Fintype.exists_pair_of_one_lt_card (by omega)
+    obtain ⟨p⟩ := hTconn.preconnected e₁ e₂
+    obtain ⟨u, v, w, huv, huw, hvw, hfu⟩ :
+        ∃ u v w : V, G.Adj u v ∧ G.Adj u w ∧ G.Adj v w ∧ f u = c / 2 := by
+      cases p with
+      | nil => exact absurd rfl hne
+      | cons hadj q =>
+        rename_i x
+        obtain ⟨u, v, w, h1, h2, hvw⟩ := hadj
+        have huv : G.Adj u v := G.mem_edgeSet.mp (h1 ▸ e₁.2)
+        have huw : G.Adj u w := G.mem_edgeSet.mp (h2 ▸ x.2)
+        refine ⟨u, v, w, huv, huw, hvw, ?_⟩
+        have e1 := hedge u v huv
+        have e2 := hedge u w huw
+        have e3 := hedge v w hvw
+        linarith
+    -- Propagate `f ≡ c/2` along edges, then over the connected graph.
+    have hprop : ∀ {x y : V}, G.Walk x y → f x = c / 2 → f y = c / 2 := by
+      intro x y q
+      induction q with
+      | nil => exact id
+      | cons hadj _ ih =>
+        intro hx; apply ih; have := hedge _ _ hadj; linarith
+    have hfconst : ∀ x : V, f x = c / 2 := by
+      intro x; obtain ⟨q⟩ := hconn.preconnected u x; exact hprop q hfu
+    -- `∑ f = 0` with `f ≡ c/2` forces `c = 0`, hence `f = 0`, contradicting `‖f‖ = 1`.
+    have hcard_ne : (Fintype.card V : ℝ) ≠ 0 := by
+      have : 0 < Fintype.card V := by omega
+      positivity
+    have hc0 : c = 0 := by
+      have hsum0 : (0 : ℝ) = ∑ x : V, c / 2 := by
+        rw [← hfperp]; exact Finset.sum_congr rfl fun x _ => hfconst x
+      rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul] at hsum0
+      rcases mul_eq_zero.mp hsum0.symm with hh | hh
+      · exact absurd hh hcard_ne
+      · linarith
+    have hsq0 : ∑ x : V, (f x) ^ 2 = 0 :=
+      Finset.sum_eq_zero fun x _ => by rw [hfconst x, hc0]; norm_num
+    linarith [hfnorm, hsq0]
+  have hh_ne : h ≠ 0 := by
+    intro habs
+    have hz : ∑ e : G.edgeSet, (h e) ^ 2 = 0 := by rw [habs]; simp
+    rw [hdenom] at hz; linarith [hD_pos]
+  -- Step 5: numerator = `triEnergy / 2` (constant shift cancels in the differences).
+  have hcancel : ∀ e₁ e₂ : G.edgeSet, h e₁ - h e₂ = edgeLift G f e₁ - edgeLift G f e₂ := by
+    intro e₁ e₂; simp only [hh_def]; ring
+  have hnum : Matrix.toLinearMap₂' ℝ ((triangleGraph G).lapMatrix ℝ) h h = triEnergy G f / 2 := by
+    rw [SimpleGraph.lapMatrix_toLinearMap₂']
+    have hstep :
+        (∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
+          if (triangleGraph G).Adj e₁ e₂ then (h e₁ - h e₂) ^ 2 else (0 : ℝ))
+        = ∑ e₁ : G.edgeSet, ∑ e₂ : G.edgeSet,
+          if (triangleGraph G).Adj e₁ e₂
+          then (edgeLift G f e₁ - edgeLift G f e₂) ^ 2 else (0 : ℝ) := by
+      refine Finset.sum_congr rfl fun e₁ _ => Finset.sum_congr rfl fun e₂ _ => ?_
+      rw [hcancel e₁ e₂]
+    rw [hstep, triangleGraph_quadratic_eq_triEnergy G f]
+    congr 1
+  -- Step 6: Courant–Fischer on `T(G)` and the lift bound.
+  have hray := algebraicConnectivity_le_rayleigh (triangleGraph G) hTconn hTV h hh_ne hh_perp
+  apply le_trans hray
+  rw [hnum, hdenom, div_le_iff₀ hD_pos]
+  linarith [hbound]
 
 end Topostability
