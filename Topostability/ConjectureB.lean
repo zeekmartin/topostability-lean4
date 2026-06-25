@@ -1039,7 +1039,8 @@ flatness inequality, isolating that resolvent bound as the only remaining gap (i
 theorem typeA_slack_ge_required (f : V → ℝ) (lam mE : ℝ)
     (hTconn : (triangleGraph G).Connected)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
-    (hReq : 0 < required G f lam mE) :
+    (hReq : 0 < required G f lam mE)
+    (hfnorm : ∑ v : V, (f v) ^ 2 = 1) (hfsum : ∑ v : V, f v = 0) :
     required G f lam mE ≤ aggregateSlack G f lam := by
   sorry
 
@@ -1048,10 +1049,11 @@ identity `gapEnergy = aggregateSlack − required`, the bound is exactly `requir
 theorem typeA_extremality_gap_nonneg (f : V → ℝ) (lam mE : ℝ)
     (hTconn : (triangleGraph G).Connected)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
-    (hReq : 0 < required G f lam mE) :
+    (hReq : 0 < required G f lam mE)
+    (hfnorm : ∑ v : V, (f v) ^ 2 = 1) (hfsum : ∑ v : V, f v = 0) :
     0 ≤ gapEnergy G f lam mE := by
   rw [gap_eq_aggregateSlack_sub_required G f lam mE]
-  have h := typeA_slack_ge_required G f lam mE hTconn heig hReq
+  have h := typeA_slack_ge_required G f lam mE hTconn heig hReq hfnorm hfsum
   linarith
 
 /-- **Master regime dispatch.** Given the aggregate Poincaré slack (`aggregateSlack ≥ 0`) and a
@@ -1060,11 +1062,12 @@ regime ii (`required > 0`) via `typeA_extremality_gap_nonneg`. -/
 theorem gapEnergy_nonneg (f : V → ℝ) (lam mE : ℝ)
     (hTconn : (triangleGraph G).Connected)
     (heig : (G.lapMatrix ℝ).mulVec f = lam • f)
-    (haggr : 0 ≤ aggregateSlack G f lam) :
+    (haggr : 0 ≤ aggregateSlack G f lam)
+    (hfnorm : ∑ v : V, (f v) ^ 2 = 1) (hfsum : ∑ v : V, f v = 0) :
     0 ≤ gapEnergy G f lam mE := by
   by_cases hR : required G f lam mE ≤ 0
   · exact regime_i_from_aggregate G f lam mE haggr hR
-  · exact typeA_extremality_gap_nonneg G f lam mE hTconn heig (not_le.mp hR)
+  · exact typeA_extremality_gap_nonneg G f lam mE hTconn heig (not_le.mp hR) hfnorm hfsum
 
 /-- **The lift inequality `T ≤ λ₂G` — EXISTENTIAL form (the universal form is FALSE).**
 The *universal* statement `∀ f, L_G f = λf → triEnergy G f ≤ 2λ(2fᵀDf − λ − S²/m)` is **FALSE** when
@@ -1095,7 +1098,7 @@ theorem triEnergy_le_RHS_exists (lam mE : ℝ)
   have haggr : 0 ≤ aggregateSlack G f₀ lam := by
     have := aggregate_triangle_poincare G f₀ lam hf₀eig
     simp only [aggregateSlack]; linarith
-  have hgap := gapEnergy_nonneg G f₀ lam mE hTconn hf₀eig haggr
+  have hgap := gapEnergy_nonneg G f₀ lam mE hTconn hf₀eig haggr hf₀norm hf₀perp
   simp only [gapEnergy] at hgap; linarith
 
 /-- **Conjecture B — triangle-energy lift inequality (EXISTENTIAL).** Given a unit Fiedler `f₀`

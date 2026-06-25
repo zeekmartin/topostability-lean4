@@ -1,7 +1,32 @@
 # Conjecture B — consolidation status
 
-Canonical snapshot of the `λ₂(T(G)) ≤ λ₂(G)` campaign. Repo state: **exactly 3 `sorry`s**, all in
-`ConjectureB.lean` (the three open conjecture lemmas); everything else is sorry-free.
+Canonical snapshot of the `λ₂(T(G)) ≤ λ₂(G)` campaign. Repo state: **exactly 2 `sorry`s**, all in
+`ConjectureB.lean` (the two open analytic-core lemmas); everything else is sorry-free. (Older blocks
+in this file say "3 sorrys" — the third, the graph statement `conjectureB`, is now **proven
+sorry-free**; the dated block immediately below is the authoritative current status.)
+
+---
+
+## Sorry status (as of 2026-06-25)
+
+**2 sorry tokens, 1 mathematical obstacle.**
+
+### Sorry 1: `aggregate_triangle_poincare` (line 858)
+Content: `T ≤ 2λ·degQuad` for Fiedler eigenvectors.
+Status: open problem. Hadamard obstruction confirmed. All operator/matrix routes exhausted.
+
+### Sorry 2: `typeA_slack_ge_required` (line 1045)
+Content: the same inequality restricted to the `Required > 0` regime.
+Status: mathematically equivalent to Sorry 1 on this regime. Dirichlet partition bridge available
+(`typeA_slack_ge_required_of_dirichlet`, `Helpers/DirichletPartition.lean`, sorry-free conditional).
+Signature now carries `hfnorm : ∑ v, f v² = 1` and `hfsum : ∑ v, f v = 0` (threaded down from
+`triEnergy_le_RHS_exists`, which already supplies them); without the unit-norm hypothesis the
+statement is *false* — `required` and `aggregateSlack` are not scale-homogeneous in `f`, so a
+rescaled eigenvector keeps `Required > 0` while breaking the conclusion.
+
+### Everything else: proved.
+`conjectureB`, `conjectureB_lift`, `triEnergy_le_RHS_exists`, irregular lift, Case 2B — all
+sorry-free. 42+ theorems, 0 sorry outside the two analytic-core tokens.
 
 ---
 
